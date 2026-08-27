@@ -15,6 +15,7 @@ import numpy as np
 import skimage
 from PIL import Image, __version__ as pillow_version
 
+from app.config import dataset_hr_directory
 from app.evaluation.images import (
     bicubic_downsample,
     bicubic_upsample,
@@ -159,7 +160,13 @@ def write_results_csv(
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Evaluate the bicubic SR baseline.")
     parser.add_argument("--dataset", required=True, help="Dataset label, for example Set5.")
-    parser.add_argument("--hr-dir", required=True, type=Path, help="Directory of HR images.")
+    input_group = parser.add_mutually_exclusive_group()
+    input_group.add_argument("--hr-dir", type=Path, help="Direct HR image directory.")
+    input_group.add_argument(
+        "--data-root",
+        type=Path,
+        help="Dataset root containing folders such as Set5/Set5_HR.",
+    )
     parser.add_argument("--scale", required=True, type=int, choices=(2, 3, 4))
     parser.add_argument("--output-csv", required=True, type=Path)
     parser.add_argument("--lr-output-dir", type=Path)
@@ -178,8 +185,13 @@ def main(argv: list[str] | None = None) -> int:
         warmup_runs=args.warmup_runs,
         timed_runs=args.timed_runs,
     )
+    hr_directory = (
+        args.hr_dir
+        if args.hr_dir is not None
+        else dataset_hr_directory(args.dataset, args.data_root)
+    )
     records = evaluate_bicubic_dataset(
-        args.hr_dir,
+        hr_directory,
         config,
         lr_output_dir=args.lr_output_dir,
         sr_output_dir=args.sr_output_dir,

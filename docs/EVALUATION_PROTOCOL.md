@@ -1,0 +1,87 @@
+# Super-Resolution Evaluation Protocol
+
+This document records the fixed rules that must be applied to bicubic, NEDI,
+FSRCNN, IMDN, and the later fusion method. Using the same rules makes the
+comparison fair and reproducible.
+
+## Experiment flow
+
+For every dataset image and scale:
+
+1. Load the original high-resolution (HR) image as RGB.
+2. Crop only the bottom and right edges when necessary so its dimensions divide
+   exactly by the scale.
+3. Create one controlled low-resolution (LR) input through Pillow bicubic
+   downsampling.
+4. Give that same LR input to every reconstruction method.
+5. Compare each reconstructed image with the aligned original HR image.
+6. Save per-image measurements to CSV before creating summaries or report tables.
+
+The required scales are x2, x3, and x4. The required test datasets are Set5,
+Set14, BSD100, and Urban100.
+
+## Quality measurements
+
+Each reconstruction records both:
+
+- Y-channel PSNR and SSIM as the primary thesis measurements.
+- RGB PSNR and SSIM as additional measurements.
+
+Before calculating either set of metrics, crop the same border from the HR and
+reconstructed images:
+
+- x2: 2 pixels from every edge.
+- x3: 3 pixels from every edge.
+- x4: 4 pixels from every edge.
+
+The Y channel uses the BT.601 conversion implemented in
+`app/evaluation/metrics.py`.
+
+## Runtime measurements
+
+For the bicubic baseline, run three untimed warm-ups followed by ten timed runs
+per image. Record the mean, median, standard deviation, minimum, and maximum
+latency in milliseconds.
+
+The main experiments run in Google Colab:
+
+- Bicubic and NEDI run on the Colab CPU.
+- FSRCNN and IMDN run on the Colab GPU.
+- FSRCNN and IMDN are also timed on the Colab CPU for a direct CPU comparison
+  with NEDI.
+- GPU timings are reported separately from CPU timings.
+
+Software versions and available hardware information must be stored with the
+result records.
+
+## Dataset locations
+
+Datasets remain outside Git. The expected structure is:
+
+```text
+FYP_SR_Data/
+├── Set5/Set5_HR/
+├── Set14/Set14_HR/
+├── BSD100/BSD100_HR/
+└── Urban100/Urban100_HR/
+```
+
+The code chooses the data root in this order:
+
+1. A path explicitly passed using `--data-root`.
+2. The `FYP_SR_DATA_ROOT` environment variable.
+3. `/content/drive/MyDrive/FYP_SR_Data` when that mounted Colab folder exists.
+4. The repository's local `data/` folder.
+
+A direct HR directory can instead be supplied with `--hr-dir`.
+
+## Result protection
+
+The existing CSV files under `results/metrics/` are preliminary RGB baseline
+results and must not be deleted. Final reruns should use clearly different
+filenames. The evaluator refuses to replace an existing CSV unless overwrite is
+explicitly requested.
+
+Generated LR images, reconstructed images, and full experiment outputs remain in
+Google Drive. Final CSV files and selected report images can then be copied into
+the repository.

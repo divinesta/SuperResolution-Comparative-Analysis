@@ -5,10 +5,12 @@ import math
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import numpy as np
 from PIL import Image
 
+from app.config import dataset_hr_directory, resolve_data_root
 from app.evaluation.bicubic import (
     BicubicEvaluationConfig,
     evaluate_bicubic_dataset,
@@ -36,6 +38,21 @@ class ImagePreparationTests(unittest.TestCase):
         self.assertEqual(aligned_hr.size, (48, 36))
         self.assertEqual(lr_image.size, (12, 9))
         self.assertEqual(reconstruction.size, aligned_hr.size)
+
+
+class DataPathTests(unittest.TestCase):
+    def test_explicit_data_root_builds_the_expected_hr_path(self) -> None:
+        root = Path("/example/data")
+
+        hr_directory = dataset_hr_directory("Set14", root)
+
+        self.assertEqual(hr_directory, root / "Set14" / "Set14_HR")
+
+    def test_environment_variable_can_select_the_data_root(self) -> None:
+        with patch.dict("os.environ", {"FYP_SR_DATA_ROOT": "/mounted/datasets"}):
+            root = resolve_data_root()
+
+        self.assertEqual(root, Path("/mounted/datasets"))
 
 
 class MetricTests(unittest.TestCase):
