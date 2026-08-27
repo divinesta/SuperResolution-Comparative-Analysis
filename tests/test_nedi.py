@@ -7,6 +7,7 @@ from PIL import Image
 
 from app.traditional.nedi import (
     NEDIConfig,
+    _stage_two_observations,
     nedi_upsample_x2_luminance,
     nedi_upsample_x2_rgb,
 )
@@ -143,6 +144,26 @@ class NEDICoreTests(unittest.TestCase):
         self.assertEqual(result.image.size, (20, 24))
         self.assertEqual(result.native_size, (19, 23))
         self.assertTrue(result.dimension_adjusted)
+
+    def test_second_stage_uses_rotated_lattice_neighbours(self) -> None:
+        partial = np.arange(31 * 31, dtype=np.float64).reshape(31, 31)
+
+        local_system = _stage_two_observations(
+            partial,
+            target_row=10,
+            target_column=13,
+            window_size=4,
+        )
+
+        self.assertIsNotNone(local_system)
+        predictors, observations = local_system
+        self.assertEqual(predictors.shape, (16, 4))
+        self.assertEqual(observations.shape, (16,))
+        self.assertEqual(observations[0], partial[10, 10])
+        np.testing.assert_array_equal(
+            predictors[0],
+            [partial[10, 8], partial[8, 10], partial[12, 10], partial[10, 12]],
+        )
 
 
 if __name__ == "__main__":

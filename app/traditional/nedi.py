@@ -178,46 +178,44 @@ def _stage_two_observations(
     target_column: int,
     window_size: int,
 ) -> tuple[FloatImage, FloatImage] | None:
-    """Build the rotated local system for the second interlacing lattice."""
-    radius = window_size
-    if (
-        target_row - radius < 1
-        or target_column - radius < 1
-        or target_row + radius >= partial.shape[0] - 1
-        or target_column + radius >= partial.shape[1] - 1
-    ):
-        return None
+    """Build the second-stage system in the 45-degree rotated lattice.
 
-    candidates: list[tuple[int, int, int]] = []
-    for sample_row in range(target_row - radius, target_row + radius + 1):
-        for sample_column in range(
-            target_column - radius,
-            target_column + radius + 1,
-        ):
-            if (sample_row + sample_column) % 2 != 0:
-                continue
-            distance = (sample_row - target_row) ** 2 + (
-                sample_column - target_column
-            ) ** 2
-            candidates.append((distance, sample_row, sample_column))
-
-    candidates.sort()
-    selected = candidates[: window_size * window_size]
-    if len(selected) < window_size * window_size:
-        return None
+    After stage one, known output samples form a checkerboard lattice. NEDI's
+    second stage is the same covariance procedure applied after a 45-degree
+    rotation. In original image coordinates, diagonal neighbours in that
+    rotated lattice become axial neighbours two pixels away.
+    """
+    half_window = window_size // 2
+    rotated_row = (target_row + target_column) // 2
+    rotated_column = (target_column - target_row - 1) // 2
+    row_start = rotated_row - half_window + 1
+    column_start = rotated_column - half_window + 1
+    row_stop = row_start + window_size
+    column_stop = column_start + window_size
 
     observations: list[float] = []
     predictors: list[list[float]] = []
-    for _, sample_row, sample_column in selected:
-        observations.append(float(partial[sample_row, sample_column]))
-        predictors.append(
-            [
-                float(partial[sample_row - 1, sample_column - 1]),
-                float(partial[sample_row - 1, sample_column + 1]),
-                float(partial[sample_row + 1, sample_column - 1]),
-                float(partial[sample_row + 1, sample_column + 1]),
-            ]
-        )
+    for sample_rotated_row in range(row_start, row_stop):
+        for sample_rotated_column in range(column_start, column_stop):
+            sample_row = sample_rotated_row - sample_rotated_column
+            sample_column = sample_rotated_row + sample_rotated_column
+            if (
+                sample_row < 2
+                or sample_column < 2
+                or sample_row >= partial.shape[0] - 2
+                or sample_column >= partial.shape[1] - 2
+            ):
+                return None
+
+            observations.append(float(partial[sample_row, sample_column]))
+            predictors.append(
+                [
+                    float(partial[sample_row, sample_column - 2]),
+                    float(partial[sample_row - 2, sample_column]),
+                    float(partial[sample_row + 2, sample_column]),
+                    float(partial[sample_row, sample_column + 2]),
+                ]
+            )
 
     return np.asarray(predictors), np.asarray(observations)
 
@@ -309,19 +307,22 @@ def nedi_upsample_x2_luminance(
             if (target_row + target_column) % 2 == 0:
                 continue
 
+            # In the rotated lattice, these are the four cell corners in the
+            # same order as the rotated covariance predictors: left, up,
+            # down, then right.
             neighbours = np.asarray(
                 [
-                    output[target_row - 1, target_column]
-                    if target_row > 0
-                    else output[target_row, target_column],
-                    output[target_row, target_column + 1]
-                    if target_column + 1 < output.shape[1]
-                    else output[target_row, target_column],
                     output[target_row, target_column - 1]
                     if target_column > 0
                     else output[target_row, target_column],
+                    output[target_row - 1, target_column]
+                    if target_row > 0
+                    else output[target_row, target_column],
                     output[target_row + 1, target_column]
                     if target_row + 1 < output.shape[0]
+                    else output[target_row, target_column],
+                    output[target_row, target_column + 1]
+                    if target_column + 1 < output.shape[1]
                     else output[target_row, target_column],
                 ],
                 dtype=np.float64,

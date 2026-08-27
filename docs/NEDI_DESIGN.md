@@ -45,8 +45,9 @@ One native x2 pass will work in two interpolation stages:
 
 1. Place the original LR samples at their corresponding locations in the x2
    output grid and estimate the missing diagonal/interlacing pixels.
-2. Estimate the remaining horizontal and vertical pixels using the rotated
-   neighbourhood described in the paper.
+2. Rotate the resulting checkerboard lattice by 45 degrees in coordinate space,
+   then repeat the same covariance procedure to estimate the remaining
+   horizontal and vertical pixels.
 
 The default local covariance window will be 8x8 and the default edge activity
 threshold will be 8, matching the settings reported in the original paper.
