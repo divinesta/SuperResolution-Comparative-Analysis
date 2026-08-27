@@ -137,13 +137,20 @@ class NEDICoreTests(unittest.TestCase):
         self.assertFalse(result.dimension_adjusted)
 
     def test_rgb_reconstruction_records_target_size_adjustment(self) -> None:
-        source = Image.new("RGB", (10, 12), "blue")
+        source = Image.fromarray(
+            np.arange(10 * 12 * 3, dtype=np.uint8).reshape(12, 10, 3)
+        )
 
+        native = nedi_upsample_x2_rgb(source, (19, 23))
         result = nedi_upsample_x2_rgb(source, (20, 24))
 
         self.assertEqual(result.image.size, (20, 24))
         self.assertEqual(result.native_size, (19, 23))
         self.assertTrue(result.dimension_adjusted)
+        np.testing.assert_array_equal(
+            np.asarray(result.image)[:23, :19],
+            np.asarray(native.image),
+        )
 
     def test_second_stage_uses_rotated_lattice_neighbours(self) -> None:
         partial = np.arange(31 * 31, dtype=np.float64).reshape(31, 31)

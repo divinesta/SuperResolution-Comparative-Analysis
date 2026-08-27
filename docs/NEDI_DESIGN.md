@@ -82,10 +82,12 @@ be recorded in every result:
 - **x3:** one native NEDI x2 pass followed by bicubic resizing to the exact x3
   target size. This is a documented hybrid scale procedure, not native x3 NEDI.
 
-Some prepared benchmark pairs have an HR dimension that is not exactly `LR
-dimension x scale`. After the scale procedure, any difference of fewer than
-`scale` pixels will be reconciled by a final bicubic resize to the original HR
-dimensions. The result record will state whether this size adjustment occurred.
+The native x2 insertion grid is one row and one column smaller than an exact
+`LR dimension x 2` reference (for example, `256x256` becomes `511x511`, while
+the reference is `512x512`). In that normal case, the native NEDI interior is
+kept unchanged and bicubic supplies only the missing final outer row and
+column. This avoids stretching and shifting the whole NEDI result. The result
+record will state whether a size adjustment occurred.
 
 ## Boundary and Numerical Fallbacks
 

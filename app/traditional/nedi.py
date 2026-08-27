@@ -355,8 +355,9 @@ def nedi_upsample_x2_rgb(
     """Apply native x2 NEDI to luminance and bicubic interpolation to chroma.
 
     Native NEDI produces an insertion grid of ``(2h - 1, 2w - 1)``. When a
-    prepared benchmark pair has a different exact HR size, the assembled RGB
-    result is bicubically resized to that target and the adjustment is recorded.
+    prepared benchmark pair is one row and/or column larger, preserve that
+    native NEDI interior exactly and use bicubic only for the missing outer
+    boundary. This avoids shifting every NEDI-reconstructed pixel.
     """
     target_width, target_height = target_size
     if target_width <= 0 or target_height <= 0:
@@ -387,10 +388,23 @@ def nedi_upsample_x2_rgb(
 
     dimension_adjusted = native_size != target_size
     if dimension_adjusted:
-        reconstruction = reconstruction.resize(
-            target_size,
-            resample=Image.Resampling.BICUBIC,
-        )
+        if target_width >= native_width and target_height >= native_height:
+            # The native x2 insertion grid is normally one pixel smaller than
+            # an exact 2x HR reference. Start with a bicubic target only to
+            # obtain its outer boundary, then retain every native NEDI pixel.
+            boundary_extended = image.convert("RGB").resize(
+                target_size,
+                resample=Image.Resampling.BICUBIC,
+            )
+            boundary_extended.paste(reconstruction, (0, 0))
+            reconstruction = boundary_extended
+        else:
+            # This is not the normal x2 benchmark case. A resize is retained
+            # as a documented safeguard for unexpectedly smaller references.
+            reconstruction = reconstruction.resize(
+                target_size,
+                resample=Image.Resampling.BICUBIC,
+            )
 
     return NEDIRGBResult(
         image=reconstruction,
