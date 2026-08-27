@@ -16,6 +16,7 @@ from app.evaluation.bicubic import (
     evaluate_bicubic_dataset,
     write_results_csv,
 )
+from app.evaluation.data_validation import validate_prepared_dataset
 from app.evaluation.images import (
     align_hr_to_lr,
     bicubic_downsample,
@@ -115,6 +116,19 @@ class PreparedPairTests(unittest.TestCase):
 
             with self.assertRaisesRegex(ValueError, "filename mismatch"):
                 pair_image_paths(hr_directory, lr_directory)
+
+    def test_known_dataset_requires_its_expected_image_count(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            hr_directory = root / "Set5" / "Set5_HR"
+            lr_directory = root / "Set5" / "Set5_LR_x2"
+            hr_directory.mkdir(parents=True)
+            lr_directory.mkdir(parents=True)
+            Image.new("RGB", (24, 24)).save(hr_directory / "only_one.png")
+            Image.new("RGB", (12, 12)).save(lr_directory / "only_one.png")
+
+            with self.assertRaisesRegex(ValueError, "should contain 5"):
+                validate_prepared_dataset("Set5", 2, root)
 
 
 class TimingTests(unittest.TestCase):
