@@ -24,6 +24,15 @@ For every dataset image and scale:
 The required scales are x2, x3, and x4. The required test datasets are Set5,
 Set14, BSD100, and Urban100.
 
+## NEDI reconstruction policy
+
+The exact algorithm, colour handling, scaling strategy, numerical fallbacks,
+metadata, and validation requirements for NEDI are fixed in
+`docs/NEDI_DESIGN.md`. In particular, native NEDI x2 passes are used directly
+for x2 and repeated for x4. The required x3 result uses the documented NEDI x2
+plus bicubic hybrid because the original NEDI algorithm only supports
+power-of-two magnification factors.
+
 ## Quality measurements
 
 Each reconstruction records both:
