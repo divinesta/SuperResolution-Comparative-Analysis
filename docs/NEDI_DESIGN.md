@@ -130,6 +130,7 @@ nedi_edge_threshold
 nedi_scale_strategy
 nedi_native_passes
 nedi_edge_pixel_count
+nedi_pixel_count
 nedi_bilinear_fallback_count
 nedi_numerical_fallback_count
 nedi_dimension_adjustment
