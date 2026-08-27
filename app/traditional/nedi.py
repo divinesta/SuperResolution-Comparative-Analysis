@@ -16,6 +16,14 @@ from PIL import Image
 
 FloatImage = NDArray[np.float64]
 
+# Keys cubic weights for a +0.5 pixel shift. Even-insertion NEDI places LR
+# samples at HR sites (2i, 2j). Bicubic-prepared benchmark pairs, and this
+# project's bicubic baseline, sit on the Pillow/MATLAB resize grid, which is
+# half a pixel away. See Li and Orchard (2001) for the insertion lattice and
+# the evaluation protocol for why the shift is applied only when assembling
+# an RGB result against an HR reference.
+_HALF_PIXEL_KERNEL = np.array([-0.0625, 0.5625, 0.5625, -0.0625], dtype=np.float64)
+
 
 @dataclass(frozen=True)
 class NEDIConfig:
@@ -95,18 +103,52 @@ def _validate_luminance(luminance: NDArray[np.generic]) -> FloatImage:
 
 
 def _bilinear_grid(source: FloatImage) -> FloatImage:
+    """Build the 2h x 2w even-insertion grid used by Li and Orchard.
+
+    Original samples occupy ``output[2i, 2j]``. Missing sites are initialised
+    with bilinear interpolation; covariance-based NEDI later replaces edge
+    pixels. The extra final row and column have no further original sample to
+    their south or east, so they replicate or average from the available side.
+    """
     height, width = source.shape
-    output = np.empty((2 * height - 1, 2 * width - 1), dtype=np.float64)
+    output = np.empty((2 * height, 2 * width), dtype=np.float64)
     output[::2, ::2] = source
-    output[::2, 1::2] = (source[:, :-1] + source[:, 1:]) / 2.0
-    output[1::2, ::2] = (source[:-1, :] + source[1:, :]) / 2.0
-    output[1::2, 1::2] = (
+    output[::2, 1:-1:2] = (source[:, :-1] + source[:, 1:]) / 2.0
+    output[::2, -1] = source[:, -1]
+    output[1:-1:2, ::2] = (source[:-1, :] + source[1:, :]) / 2.0
+    output[-1, ::2] = source[-1, :]
+    output[1:-1:2, 1:-1:2] = (
         source[:-1, :-1]
         + source[:-1, 1:]
         + source[1:, :-1]
         + source[1:, 1:]
     ) / 4.0
+    output[1:-1:2, -1] = (source[:-1, -1] + source[1:, -1]) / 2.0
+    output[-1, 1:-1:2] = (source[-1, :-1] + source[-1, 1:]) / 2.0
+    output[-1, -1] = source[-1, -1]
     return output
+
+
+def _shift_half_pixel(image: FloatImage) -> FloatImage:
+    """Shift an even-insertion image by +0.5 px onto the bicubic resize grid.
+
+    Separable Keys cubic (a = -0.5) evaluated at offset 0.5. Output pixel
+    ``(r, c)`` is sampled from input ``(r - 0.5, c - 0.5)``.
+    """
+    padded_rows = np.pad(image, ((2, 1), (0, 0)), mode="edge")
+    shifted_rows = (
+        _HALF_PIXEL_KERNEL[0] * padded_rows[:-3]
+        + _HALF_PIXEL_KERNEL[1] * padded_rows[1:-2]
+        + _HALF_PIXEL_KERNEL[2] * padded_rows[2:-1]
+        + _HALF_PIXEL_KERNEL[3] * padded_rows[3:]
+    )
+    padded_columns = np.pad(shifted_rows, ((0, 0), (2, 1)), mode="edge")
+    return (
+        _HALF_PIXEL_KERNEL[0] * padded_columns[:, :-3]
+        + _HALF_PIXEL_KERNEL[1] * padded_columns[:, 1:-2]
+        + _HALF_PIXEL_KERNEL[2] * padded_columns[:, 2:-1]
+        + _HALF_PIXEL_KERNEL[3] * padded_columns[:, 3:]
+    )
 
 
 def _is_edge(neighbours: FloatImage, threshold: float) -> bool:
@@ -121,7 +163,7 @@ def _solve_weights(
         return None
 
     try:
-        weights, _, rank, _ = np.linalg.lstsq(
+        weights, _, _, _ = np.linalg.lstsq(
             data_matrix,
             observations,
             rcond=None,
@@ -129,7 +171,7 @@ def _solve_weights(
     except np.linalg.LinAlgError:
         return None
 
-    if rank < 4 or not np.isfinite(weights).all():
+    if not np.isfinite(weights).all():
         return None
     return np.asarray(weights, dtype=np.float64)
 
@@ -155,21 +197,17 @@ def _stage_one_observations(
     ):
         return None
 
-    observations: list[float] = []
-    predictors: list[list[float]] = []
-    for sample_row in range(row_start, row_stop):
-        for sample_column in range(column_start, column_stop):
-            observations.append(float(source[sample_row, sample_column]))
-            predictors.append(
-                [
-                    float(source[sample_row - 1, sample_column - 1]),
-                    float(source[sample_row - 1, sample_column + 1]),
-                    float(source[sample_row + 1, sample_column - 1]),
-                    float(source[sample_row + 1, sample_column + 1]),
-                ]
-            )
-
-    return np.asarray(predictors), np.asarray(observations)
+    window = source[row_start - 1 : row_stop + 1, column_start - 1 : column_stop + 1]
+    observations = window[1:-1, 1:-1].reshape(-1)
+    predictors = np.column_stack(
+        (
+            window[:-2, :-2].reshape(-1),
+            window[:-2, 2:].reshape(-1),
+            window[2:, :-2].reshape(-1),
+            window[2:, 2:].reshape(-1),
+        )
+    )
+    return predictors, observations
 
 
 def _stage_two_observations(
@@ -184,28 +222,29 @@ def _stage_two_observations(
     second stage is the same covariance procedure applied after a 45-degree
     rotation. In original image coordinates, diagonal neighbours in that
     rotated lattice become axial neighbours two pixels away.
+
+    Samples that fall outside the image are skipped rather than aborting the
+    whole window, so interior pixels near a boundary can still use the
+    in-bounds portion of the 8x8 training set.
     """
     half_window = window_size // 2
     rotated_row = (target_row + target_column) // 2
-    rotated_column = (target_column - target_row - 1) // 2
-    row_start = rotated_row - half_window + 1
-    column_start = rotated_column - half_window + 1
-    row_stop = row_start + window_size
-    column_stop = column_start + window_size
+    rotated_column = (target_column - target_row) // 2
+    height, width = partial.shape
 
     observations: list[float] = []
     predictors: list[list[float]] = []
-    for sample_rotated_row in range(row_start, row_stop):
-        for sample_rotated_column in range(column_start, column_stop):
-            sample_row = sample_rotated_row - sample_rotated_column
-            sample_column = sample_rotated_row + sample_rotated_column
+    for delta_u in range(-half_window + 1, half_window + 1):
+        for delta_v in range(-half_window + 1, half_window + 1):
+            sample_row = (rotated_row + delta_u) - (rotated_column + delta_v)
+            sample_column = (rotated_row + delta_u) + (rotated_column + delta_v)
             if (
                 sample_row < 2
                 or sample_column < 2
-                or sample_row >= partial.shape[0] - 2
-                or sample_column >= partial.shape[1] - 2
+                or sample_row >= height - 2
+                or sample_column >= width - 2
             ):
-                return None
+                continue
 
             observations.append(float(partial[sample_row, sample_column]))
             predictors.append(
@@ -217,6 +256,8 @@ def _stage_two_observations(
                 ]
             )
 
+    if len(observations) < 4:
+        return None
     return np.asarray(predictors), np.asarray(observations)
 
 
@@ -263,8 +304,9 @@ def nedi_upsample_x2_luminance(
     """Enlarge one 0-255 luminance image with a native two-stage NEDI pass.
 
     An input of shape ``(height, width)`` produces the insertion-grid shape
-    ``(2 * height - 1, 2 * width - 1)``. A later reconstruction layer is
-    responsible for reconciling that native grid with an exact HR target size.
+    ``(2 * height, 2 * width)``, with original samples at even coordinates.
+    The RGB reconstruction layer is responsible for aligning that lattice with
+    a bicubic-prepared HR reference.
     """
     settings = config or NEDIConfig()
     source = _validate_luminance(luminance)
@@ -354,10 +396,11 @@ def nedi_upsample_x2_rgb(
 ) -> NEDIRGBResult:
     """Apply native x2 NEDI to luminance and bicubic interpolation to chroma.
 
-    Native NEDI produces an insertion grid of ``(2h - 1, 2w - 1)``. When a
-    prepared benchmark pair is one row and/or column larger, preserve that
-    native NEDI interior exactly and use bicubic only for the missing outer
-    boundary. This avoids shifting every NEDI-reconstructed pixel.
+    Native NEDI produces a ``(2h, 2w)`` even-insertion grid. Before comparison
+    with a bicubic-prepared HR image, luminance is shifted by half a pixel so
+    that it occupies the same sampling grid as Pillow bicubic resizing. When
+    a prepared pair is larger than that native 2x size, bicubic supplies only
+    the missing outer boundary.
     """
     target_width, target_height = target_size
     if target_width <= 0 or target_height <= 0:
@@ -365,7 +408,8 @@ def nedi_upsample_x2_rgb(
 
     source_ycbcr = np.asarray(image.convert("YCbCr"), dtype=np.uint8)
     luminance_result = nedi_upsample_x2_luminance(source_ycbcr[..., 0], config)
-    native_height, native_width = luminance_result.image.shape
+    aligned_luminance = np.clip(_shift_half_pixel(luminance_result.image), 0.0, 255.0)
+    native_height, native_width = aligned_luminance.shape
     native_size = (native_width, native_height)
 
     cb_image = Image.fromarray(source_ycbcr[..., 1])
@@ -379,9 +423,7 @@ def nedi_upsample_x2_rgb(
         dtype=np.uint8,
     )
     assembled_ycbcr = np.empty((native_height, native_width, 3), dtype=np.uint8)
-    assembled_ycbcr[..., 0] = np.rint(
-        np.clip(luminance_result.image, 0.0, 255.0)
-    ).astype(np.uint8)
+    assembled_ycbcr[..., 0] = np.rint(aligned_luminance).astype(np.uint8)
     assembled_ycbcr[..., 1] = cb_native
     assembled_ycbcr[..., 2] = cr_native
     reconstruction = Image.fromarray(assembled_ycbcr, mode="YCbCr").convert("RGB")
@@ -389,9 +431,6 @@ def nedi_upsample_x2_rgb(
     dimension_adjusted = native_size != target_size
     if dimension_adjusted:
         if target_width >= native_width and target_height >= native_height:
-            # The native x2 insertion grid is normally one pixel smaller than
-            # an exact 2x HR reference. Start with a bicubic target only to
-            # obtain its outer boundary, then retain every native NEDI pixel.
             boundary_extended = image.convert("RGB").resize(
                 target_size,
                 resample=Image.Resampling.BICUBIC,
@@ -399,8 +438,6 @@ def nedi_upsample_x2_rgb(
             boundary_extended.paste(reconstruction, (0, 0))
             reconstruction = boundary_extended
         else:
-            # This is not the normal x2 benchmark case. A resize is retained
-            # as a documented safeguard for unexpectedly smaller references.
             reconstruction = reconstruction.resize(
                 target_size,
                 resample=Image.Resampling.BICUBIC,

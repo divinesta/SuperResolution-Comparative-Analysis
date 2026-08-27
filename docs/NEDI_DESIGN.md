@@ -82,25 +82,43 @@ be recorded in every result:
 - **x3:** one native NEDI x2 pass followed by bicubic resizing to the exact x3
   target size. This is a documented hybrid scale procedure, not native x3 NEDI.
 
-The native x2 insertion grid is one row and one column smaller than an exact
-`LR dimension x 2` reference (for example, `256x256` becomes `511x511`, while
-the reference is `512x512`). In that normal case, the native NEDI interior is
-kept unchanged and bicubic supplies only the missing final outer row and
-column. This avoids stretching and shifting the whole NEDI result. The result
-record will state whether a size adjustment occurred.
+The native x2 insertion grid is an exact `2 x LR` lattice, matching Li and
+Orchard and Xin Li's original MATLAB: original samples occupy even
+coordinates, so `256x256` becomes `512x512`. Missing pixels in the last odd
+row and column have no further original neighbour and are filled from the
+available side.
+
+That even-insertion lattice is half a pixel away from the sampling grid used
+by bicubic-prepared HR/LR pairs and by this project's bicubic baseline
+(Pillow resize). After the native NEDI pass, luminance is therefore shifted
+by +0.5 pixels with a Keys cubic kernel before it is compared with the HR
+reference. This is an evaluation-alignment step, not a change to the
+covariance interpolator. Without it, even a correct NEDI reconstruction
+measures several dB below bicubic solely from the grid offset.
+
+If a prepared pair is larger than the native `2 x LR` size, bicubic supplies
+only the missing outer boundary. The result record states whether a size
+adjustment occurred and records `nedi_sampling_grid`.
 
 ## Boundary and Numerical Fallbacks
 
 Bilinear interpolation will be used when:
 
 - a pixel is in a smooth region;
-- a complete 8x8 covariance window is unavailable near an image boundary;
-- the least-squares system is rank-deficient or produces a non-finite result.
+- fewer than four usable covariance samples are available near an image
+  boundary;
+- the least-squares system produces a non-finite result.
+
+Rank-deficient local systems are still solved. On a true step edge the
+4-neighbour data matrix is often rank 1 or 2; that degeneracy is how NEDI
+learns to interpolate along the edge. Discarding those systems sends the
+algorithm to bilinear exactly where it is supposed to be adaptive.
 
 Original LR sample values must remain unchanged at their corresponding
-locations during each native x2 pass. Reconstructed luminance and colour values
-will be clipped to the valid 0-255 image range before conversion to an 8-bit RGB
-image.
+even coordinates during each native x2 pass. The half-pixel alignment shift
+is applied afterwards, only when an RGB result is assembled for evaluation.
+Reconstructed luminance and colour values will be clipped to the valid 0-255
+image range before conversion to an 8-bit RGB image.
 
 These fallbacks must be counted and written to the result records so that the
 amount of adaptive NEDI processing remains visible.
@@ -137,6 +155,7 @@ nedi_pixel_count
 nedi_bilinear_fallback_count
 nedi_numerical_fallback_count
 nedi_dimension_adjustment
+nedi_sampling_grid
 ```
 
 All existing quality, timing, dimension, environment, and dataset fields from
@@ -159,6 +178,11 @@ The pilot will also estimate NEDI's runtime. The full run will retain the fixed
 three warm-ups and ten timed runs unless the pilot demonstrates that this is
 impractical; any change must be documented before the full evaluation and must
 not be made silently.
+
+On bicubic-prepared natural images, original NEDI is typically a little below
+bicubic on PSNR (often around 0.5-1 dB) while looking sharper on edges. A gap
+of several dB is an implementation or alignment error, not the expected
+behaviour of the paper.
 
 ## Output Protection
 

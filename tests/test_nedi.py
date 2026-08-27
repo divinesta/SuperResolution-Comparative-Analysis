@@ -7,6 +7,7 @@ from PIL import Image
 
 from app.traditional.nedi import (
     NEDIConfig,
+    _shift_half_pixel,
     _stage_two_observations,
     nedi_upsample_x2_luminance,
     nedi_upsample_x2_rgb,
@@ -31,7 +32,7 @@ class NEDICoreTests(unittest.TestCase):
 
         result = nedi_upsample_x2_luminance(source)
 
-        self.assertEqual(result.image.shape, (23, 19))
+        self.assertEqual(result.image.shape, (24, 20))
         np.testing.assert_allclose(result.image, 123.0)
         self.assertEqual(result.stats.nedi_pixel_count, 0)
         self.assertEqual(
@@ -55,9 +56,10 @@ class NEDICoreTests(unittest.TestCase):
         )
         expected = np.asarray(
             [
-                [0.0, 50.0, 100.0, 150.0, 200.0],
-                [25.0, 75.0, 125.0, 175.0, 225.0],
-                [50.0, 100.0, 150.0, 200.0, 250.0],
+                [0.0, 50.0, 100.0, 150.0, 200.0, 200.0],
+                [25.0, 75.0, 125.0, 175.0, 225.0, 225.0],
+                [50.0, 100.0, 150.0, 200.0, 250.0, 250.0],
+                [50.0, 100.0, 150.0, 200.0, 250.0, 250.0],
             ]
         )
 
@@ -108,7 +110,7 @@ class NEDICoreTests(unittest.TestCase):
         for source in sources:
             with self.subTest():
                 result = nedi_upsample_x2_luminance(source)
-                self.assertEqual(result.image.shape, (47, 47))
+                self.assertEqual(result.image.shape, (48, 48))
                 self.assertTrue(np.isfinite(result.image).all())
                 self.assertGreaterEqual(float(result.image.min()), 0)
                 self.assertLessEqual(float(result.image.max()), 255)
@@ -129,11 +131,11 @@ class NEDICoreTests(unittest.TestCase):
         random = np.random.default_rng(24)
         source = Image.fromarray(random.integers(0, 256, size=(12, 10, 3), dtype=np.uint8))
 
-        result = nedi_upsample_x2_rgb(source, (19, 23))
+        result = nedi_upsample_x2_rgb(source, (20, 24))
 
         self.assertEqual(result.image.mode, "RGB")
-        self.assertEqual(result.image.size, (19, 23))
-        self.assertEqual(result.native_size, (19, 23))
+        self.assertEqual(result.image.size, (20, 24))
+        self.assertEqual(result.native_size, (20, 24))
         self.assertFalse(result.dimension_adjusted)
 
     def test_rgb_reconstruction_records_target_size_adjustment(self) -> None:
@@ -141,14 +143,14 @@ class NEDICoreTests(unittest.TestCase):
             np.arange(10 * 12 * 3, dtype=np.uint8).reshape(12, 10, 3)
         )
 
-        native = nedi_upsample_x2_rgb(source, (19, 23))
-        result = nedi_upsample_x2_rgb(source, (20, 24))
+        native = nedi_upsample_x2_rgb(source, (20, 24))
+        result = nedi_upsample_x2_rgb(source, (21, 25))
 
-        self.assertEqual(result.image.size, (20, 24))
-        self.assertEqual(result.native_size, (19, 23))
+        self.assertEqual(result.image.size, (21, 25))
+        self.assertEqual(result.native_size, (20, 24))
         self.assertTrue(result.dimension_adjusted)
         np.testing.assert_array_equal(
-            np.asarray(result.image)[:23, :19],
+            np.asarray(result.image)[:24, :20],
             np.asarray(native.image),
         )
 
@@ -171,6 +173,43 @@ class NEDICoreTests(unittest.TestCase):
             predictors[0],
             [partial[10, 8], partial[8, 10], partial[12, 10], partial[10, 12]],
         )
+
+    def test_second_stage_keeps_in_bounds_samples_near_a_boundary(self) -> None:
+        partial = np.arange(21 * 21, dtype=np.float64).reshape(21, 21)
+
+        local_system = _stage_two_observations(
+            partial,
+            target_row=3,
+            target_column=4,
+            window_size=8,
+        )
+
+        self.assertIsNotNone(local_system)
+        predictors, observations = local_system
+        self.assertGreaterEqual(observations.shape[0], 4)
+        self.assertEqual(predictors.shape[1], 4)
+
+    def test_half_pixel_shift_preserves_constants_and_moves_structure(self) -> None:
+        source = np.arange(6 * 6, dtype=np.float64).reshape(6, 6)
+
+        shifted = _shift_half_pixel(source)
+        constant = _shift_half_pixel(np.full((8, 8), 40.0))
+
+        self.assertEqual(shifted.shape, source.shape)
+        np.testing.assert_allclose(constant, 40.0)
+        self.assertTrue(np.isfinite(shifted).all())
+        self.assertNotEqual(shifted[2, 2], source[2, 2])
+
+    def test_rgb_reconstruction_matches_exact_2x_target_without_stretching(self) -> None:
+        source = Image.fromarray(
+            np.arange(16 * 14 * 3, dtype=np.uint8).reshape(16, 14, 3)
+        )
+
+        result = nedi_upsample_x2_rgb(source, (28, 32))
+
+        self.assertEqual(result.native_size, (28, 32))
+        self.assertEqual(result.image.size, (28, 32))
+        self.assertFalse(result.dimension_adjusted)
 
 
 if __name__ == "__main__":

@@ -107,6 +107,7 @@ def evaluate_nedi_image(
         "nedi_dimension_adjustment": reconstruction_result.dimension_adjusted,
         "nedi_native_width": reconstruction_result.native_size[0],
         "nedi_native_height": reconstruction_result.native_size[1],
+        "nedi_sampling_grid": "even_insertion_2x_half_pixel_aligned",
         **metrics,
         **timing.as_dict(),
         "hr_width": hr_width,
