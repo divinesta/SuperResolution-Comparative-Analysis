@@ -25,6 +25,7 @@ from app.evaluation.images import (
     pair_image_paths,
 )
 from app.evaluation.metrics import calculate_quality_metrics
+from app.evaluation.reporting import summarize_results
 from app.evaluation.timing import measure_runtime
 
 
@@ -168,6 +169,33 @@ class TimingTests(unittest.TestCase):
         self.assertEqual(stats.warmup_runs, 2)
         self.assertEqual(stats.timed_runs, 4)
         self.assertGreaterEqual(stats.latency_mean_ms, 0)
+
+
+class ReportingTests(unittest.TestCase):
+    def test_results_are_summarized_by_dataset_scale_and_method(self) -> None:
+        records = []
+        for image, psnr in (("a.png", 30.0), ("b.png", 34.0)):
+            records.append(
+                {
+                    "dataset": "Set5",
+                    "image": image,
+                    "scale": "x2",
+                    "method": "bicubic",
+                    "psnr_y": psnr,
+                    "ssim_y": 0.9,
+                    "psnr_rgb": psnr - 1,
+                    "ssim_rgb": 0.8,
+                    "latency_mean_ms": 4.0,
+                    "latency_median_ms": 3.5,
+                }
+            )
+
+        summary = summarize_results(records)
+
+        self.assertEqual(len(summary), 1)
+        self.assertEqual(summary[0]["image_count"], 2)
+        self.assertEqual(summary[0]["psnr_y"], 32.0)
+        self.assertEqual(summary[0]["psnr_rgb"], 31.0)
 
 
 class DatasetEvaluationTests(unittest.TestCase):
