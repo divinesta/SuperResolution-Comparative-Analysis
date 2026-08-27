@@ -15,12 +15,12 @@ import numpy as np
 import skimage
 from PIL import Image, __version__ as pillow_version
 
-from app.config import dataset_hr_directory
+from app.config import dataset_hr_directory, dataset_lr_directory
 from app.evaluation.images import (
-    bicubic_downsample,
+    align_hr_to_lr,
     bicubic_upsample,
-    list_image_paths,
     load_rgb_image,
+    pair_image_paths,
     validate_scale,
 )
 from app.evaluation.metrics import calculate_quality_metrics
@@ -64,15 +64,17 @@ def _save_image(image: Image.Image, output_path: Path) -> None:
 
 def evaluate_bicubic_image(
     hr_path: str | Path,
+    lr_path: str | Path,
     config: BicubicEvaluationConfig,
     *,
-    lr_output_dir: str | Path | None = None,
     sr_output_dir: str | Path | None = None,
 ) -> dict[str, Any]:
-    """Prepare and evaluate one image with the controlled bicubic baseline."""
-    image_path = Path(hr_path)
-    source_hr = load_rgb_image(image_path)
-    reference_hr, lr_image = bicubic_downsample(source_hr, config.scale)
+    """Evaluate one prepared HR/LR image pair with the bicubic baseline."""
+    hr_image_path = Path(hr_path)
+    lr_image_path = Path(lr_path)
+    source_hr = load_rgb_image(hr_image_path)
+    lr_image = load_rgb_image(lr_image_path)
+    reference_hr = align_hr_to_lr(source_hr, lr_image, config.scale)
 
     reconstruction, timing = measure_runtime(
         lambda: bicubic_upsample(lr_image, reference_hr.size),
@@ -85,20 +87,19 @@ def evaluate_bicubic_image(
         border=config.scale,
     )
 
-    if lr_output_dir is not None:
-        _save_image(lr_image, Path(lr_output_dir) / image_path.name)
     if sr_output_dir is not None:
-        sr_name = f"{image_path.stem}_bicubic_x{config.scale}.png"
+        sr_name = f"{hr_image_path.stem}_bicubic_x{config.scale}.png"
         _save_image(reconstruction, Path(sr_output_dir) / sr_name)
 
     hr_width, hr_height = reference_hr.size
     lr_width, lr_height = lr_image.size
     return {
         "dataset": config.dataset,
-        "image": image_path.name,
+        "image": hr_image_path.name,
         "scale": f"x{config.scale}",
         "method": "bicubic",
-        "degradation": "pillow_bicubic_downsampling",
+        "degradation": "prepared_bicubic_lr",
+        "lr_source_file": lr_image_path.name,
         "metric_border_pixels": config.scale,
         **metrics,
         **timing.as_dict(),
@@ -113,20 +114,20 @@ def evaluate_bicubic_image(
 
 def evaluate_bicubic_dataset(
     hr_directory: str | Path,
+    lr_directory: str | Path,
     config: BicubicEvaluationConfig,
     *,
-    lr_output_dir: str | Path | None = None,
     sr_output_dir: str | Path | None = None,
 ) -> list[dict[str, Any]]:
-    """Evaluate every supported HR image in a dataset directory."""
+    """Evaluate every complete prepared HR/LR pair in a dataset."""
     return [
         evaluate_bicubic_image(
-            image_path,
+            hr_path,
+            lr_path,
             config,
-            lr_output_dir=lr_output_dir,
             sr_output_dir=sr_output_dir,
         )
-        for image_path in list_image_paths(hr_directory)
+        for hr_path, lr_path in pair_image_paths(hr_directory, lr_directory)
     ]
 
 
@@ -160,16 +161,15 @@ def write_results_csv(
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Evaluate the bicubic SR baseline.")
     parser.add_argument("--dataset", required=True, help="Dataset label, for example Set5.")
-    input_group = parser.add_mutually_exclusive_group()
-    input_group.add_argument("--hr-dir", type=Path, help="Direct HR image directory.")
-    input_group.add_argument(
+    parser.add_argument("--hr-dir", type=Path, help="Direct HR image directory.")
+    parser.add_argument("--lr-dir", type=Path, help="Matching prepared LR image directory.")
+    parser.add_argument(
         "--data-root",
         type=Path,
         help="Dataset root containing folders such as Set5/Set5_HR.",
     )
     parser.add_argument("--scale", required=True, type=int, choices=(2, 3, 4))
     parser.add_argument("--output-csv", required=True, type=Path)
-    parser.add_argument("--lr-output-dir", type=Path)
     parser.add_argument("--sr-output-dir", type=Path)
     parser.add_argument("--warmup-runs", type=int, default=3)
     parser.add_argument("--timed-runs", type=int, default=10)
@@ -178,22 +178,30 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
-    args = build_parser().parse_args(argv)
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    if args.data_root is not None and (args.hr_dir is not None or args.lr_dir is not None):
+        parser.error("Use --data-root or the --hr-dir/--lr-dir pair, not both.")
+    if (args.hr_dir is None) != (args.lr_dir is None):
+        parser.error("--hr-dir and --lr-dir must be provided together.")
+
     config = BicubicEvaluationConfig(
         dataset=args.dataset,
         scale=args.scale,
         warmup_runs=args.warmup_runs,
         timed_runs=args.timed_runs,
     )
-    hr_directory = (
-        args.hr_dir
-        if args.hr_dir is not None
-        else dataset_hr_directory(args.dataset, args.data_root)
-    )
+    if args.hr_dir is not None:
+        hr_directory = args.hr_dir
+        lr_directory = args.lr_dir
+    else:
+        hr_directory = dataset_hr_directory(args.dataset, args.data_root)
+        lr_directory = dataset_lr_directory(args.dataset, args.scale, args.data_root)
+
     records = evaluate_bicubic_dataset(
         hr_directory,
+        lr_directory,
         config,
-        lr_output_dir=args.lr_output_dir,
         sr_output_dir=args.sr_output_dir,
     )
     output_path = write_results_csv(

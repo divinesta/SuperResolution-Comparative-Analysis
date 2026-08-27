@@ -9,13 +9,15 @@ comparison fair and reproducible.
 For every dataset image and scale:
 
 1. Load the original high-resolution (HR) image as RGB.
-2. Crop only the bottom and right edges when necessary so its dimensions divide
-   exactly by the scale.
-3. Create one controlled low-resolution (LR) input through Pillow bicubic
-   downsampling.
-4. Give that same LR input to every reconstruction method.
-5. Compare each reconstructed image with the aligned original HR image.
-6. Save per-image measurements to CSV before creating summaries or report tables.
+2. Load its matching prepared bicubic low-resolution (LR) image for the selected
+   scale.
+3. Verify that the HR and LR filenames match and that their dimensions have the
+   correct scale relationship.
+4. If required, crop only the HR image's bottom and right edges to align it with
+   the exact area represented by the prepared LR image.
+5. Give that same prepared LR input to every reconstruction method.
+6. Compare each reconstructed image with the aligned original HR image.
+7. Save per-image measurements to CSV before creating summaries or report tables.
 
 The required scales are x2, x3, and x4. The required test datasets are Set5,
 Set14, BSD100, and Urban100.
@@ -60,10 +62,14 @@ Datasets remain outside Git. The expected structure is:
 
 ```text
 FYP_SR_Data/
-├── Set5/Set5_HR/
-├── Set14/Set14_HR/
-├── BSD100/BSD100_HR/
-└── Urban100/Urban100_HR/
+├── Set5/
+│   ├── Set5_HR/
+│   ├── Set5_LR_x2/
+│   ├── Set5_LR_x3/
+│   └── Set5_LR_x4/
+├── Set14/            # Same HR and LR folder pattern
+├── BSD100/           # Same HR and LR folder pattern
+└── Urban100/         # Same HR and LR folder pattern
 ```
 
 The code chooses the data root in this order:
@@ -73,7 +79,8 @@ The code chooses the data root in this order:
 3. `/content/drive/MyDrive/FYP_SR_Data` when that mounted Colab folder exists.
 4. The repository's local `data/` folder.
 
-A direct HR directory can instead be supplied with `--hr-dir`.
+Direct paired directories can instead be supplied together with `--hr-dir` and
+`--lr-dir`.
 
 ## Result protection
 
@@ -82,6 +89,6 @@ results and must not be deleted. Final reruns should use clearly different
 filenames. The evaluator refuses to replace an existing CSV unless overwrite is
 explicitly requested.
 
-Generated LR images, reconstructed images, and full experiment outputs remain in
-Google Drive. Final CSV files and selected report images can then be copied into
-the repository.
+The prepared LR images remain unchanged in Google Drive. Reconstructed images
+and full experiment outputs also remain in Google Drive. Final CSV files and
+selected report images can then be copied into the repository.

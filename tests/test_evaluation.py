@@ -10,13 +10,19 @@ from unittest.mock import patch
 import numpy as np
 from PIL import Image
 
-from app.config import dataset_hr_directory, resolve_data_root
+from app.config import dataset_hr_directory, dataset_lr_directory, resolve_data_root
 from app.evaluation.bicubic import (
     BicubicEvaluationConfig,
     evaluate_bicubic_dataset,
     write_results_csv,
 )
-from app.evaluation.images import bicubic_downsample, bicubic_upsample, modcrop
+from app.evaluation.images import (
+    align_hr_to_lr,
+    bicubic_downsample,
+    bicubic_upsample,
+    modcrop,
+    pair_image_paths,
+)
 from app.evaluation.metrics import calculate_quality_metrics
 from app.evaluation.timing import measure_runtime
 
@@ -47,6 +53,13 @@ class DataPathTests(unittest.TestCase):
         hr_directory = dataset_hr_directory("Set14", root)
 
         self.assertEqual(hr_directory, root / "Set14" / "Set14_HR")
+
+    def test_data_root_builds_the_expected_lr_path(self) -> None:
+        root = Path("/example/data")
+
+        lr_directory = dataset_lr_directory("BSD100", 4, root)
+
+        self.assertEqual(lr_directory, root / "BSD100" / "BSD100_LR_x4")
 
     def test_environment_variable_can_select_the_data_root(self) -> None:
         with patch.dict("os.environ", {"FYP_SR_DATA_ROOT": "/mounted/datasets"}):
@@ -81,6 +94,29 @@ class MetricTests(unittest.TestCase):
         self.assertTrue(math.isinf(cropped["psnr_rgb"]))
 
 
+class PreparedPairTests(unittest.TestCase):
+    def test_hr_reference_is_aligned_to_prepared_lr_dimensions(self) -> None:
+        hr_image = Image.new("RGB", (101, 98), "white")
+        lr_image = Image.new("RGB", (33, 32), "white")
+
+        aligned_hr = align_hr_to_lr(hr_image, lr_image, scale=3)
+
+        self.assertEqual(aligned_hr.size, (99, 96))
+
+    def test_filename_mismatch_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            hr_directory = root / "HR"
+            lr_directory = root / "LR"
+            hr_directory.mkdir()
+            lr_directory.mkdir()
+            Image.new("RGB", (24, 24)).save(hr_directory / "original.png")
+            Image.new("RGB", (12, 12)).save(lr_directory / "different.png")
+
+            with self.assertRaisesRegex(ValueError, "filename mismatch"):
+                pair_image_paths(hr_directory, lr_directory)
+
+
 class TimingTests(unittest.TestCase):
     def test_runtime_uses_warmups_and_repeated_measurements(self) -> None:
         calls = 0
@@ -104,7 +140,9 @@ class DatasetEvaluationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary_directory:
             root = Path(temporary_directory)
             hr_directory = root / "Set5_HR"
+            lr_directory = root / "Set5_LR_x2"
             hr_directory.mkdir()
+            lr_directory.mkdir()
             output_path = root / "metrics" / "Set5_x2_bicubic_final.csv"
 
             gradient = np.zeros((24, 24, 3), dtype=np.uint8)
@@ -112,9 +150,15 @@ class DatasetEvaluationTests(unittest.TestCase):
             gradient[..., 1] = np.arange(24, dtype=np.uint8)[None, :] * 10
             gradient[..., 2] = 100
             Image.fromarray(gradient).save(hr_directory / "sample.png")
+            prepared_lr = Image.fromarray(gradient).resize(
+                (12, 12),
+                resample=Image.Resampling.BICUBIC,
+            )
+            prepared_lr.save(lr_directory / "sample.png")
 
             records = evaluate_bicubic_dataset(
                 hr_directory,
+                lr_directory,
                 BicubicEvaluationConfig(
                     dataset="Set5",
                     scale=2,

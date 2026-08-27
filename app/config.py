@@ -33,3 +33,19 @@ def dataset_hr_directory(dataset: str, data_root: str | Path | None = None) -> P
 
     root = resolve_data_root(data_root)
     return root / dataset_name / f"{dataset_name}_HR"
+
+
+def dataset_lr_directory(
+    dataset: str,
+    scale: int,
+    data_root: str | Path | None = None,
+) -> Path:
+    """Return the expected prepared LR directory for one dataset and scale."""
+    dataset_name = dataset.strip()
+    if not dataset_name:
+        raise ValueError("Dataset name cannot be empty.")
+    if scale not in {2, 3, 4}:
+        raise ValueError(f"Scale must be 2, 3, or 4; received {scale}.")
+
+    root = resolve_data_root(data_root)
+    return root / dataset_name / f"{dataset_name}_LR_x{scale}"
