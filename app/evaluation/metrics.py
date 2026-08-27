@@ -17,6 +17,12 @@ except ImportError:
 
 
 ImageInput: TypeAlias = Image.Image | NDArray[np.generic]
+SSIM_SETTINGS = {
+    "data_range": 255.0,
+    "gaussian_weights": True,
+    "sigma": 1.5,
+    "use_sample_covariance": False,
+}
 
 
 def _as_rgb_array(image: ImageInput) -> NDArray[np.float64]:
@@ -82,7 +88,11 @@ def calculate_quality_metrics(
             peak_signal_noise_ratio(reference_y, reconstruction_y, data_range=255.0)
         ),
         "ssim_y": float(
-            structural_similarity(reference_y, reconstruction_y, data_range=255.0)
+            structural_similarity(
+                reference_y,
+                reconstruction_y,
+                **SSIM_SETTINGS,
+            )
         ),
         "psnr_rgb": float(
             peak_signal_noise_ratio(
@@ -96,7 +106,7 @@ def calculate_quality_metrics(
                 reference_rgb,
                 reconstruction_rgb,
                 channel_axis=2,
-                data_range=255.0,
+                **SSIM_SETTINGS,
             )
         ),
     }

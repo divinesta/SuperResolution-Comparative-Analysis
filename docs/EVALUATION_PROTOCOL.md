@@ -39,6 +39,10 @@ reconstructed images:
 The Y channel uses the BT.601 conversion implemented in
 `app/evaluation/metrics.py`.
 
+SSIM uses the standard super-resolution settings: an 11x11 Gaussian window,
+sigma 1.5, and population covariance. These settings match the original SSIM
+method and the evaluation implementation used by BasicSR.
+
 ## Runtime measurements
 
 For the bicubic baseline, run three untimed warm-ups followed by ten timed runs

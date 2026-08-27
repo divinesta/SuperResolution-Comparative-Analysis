@@ -80,6 +80,27 @@ class MetricTests(unittest.TestCase):
         self.assertAlmostEqual(metrics["ssim_y"], 1.0)
         self.assertAlmostEqual(metrics["ssim_rgb"], 1.0)
 
+    def test_ssim_uses_the_standard_gaussian_protocol(self) -> None:
+        reference = np.full((24, 24, 3), 128, dtype=np.uint8)
+        reconstruction = reference.copy()
+        reconstruction[10:14, 10:14, :] = 100
+
+        with patch(
+            "app.evaluation.metrics.structural_similarity",
+            wraps=__import__(
+                "skimage.metrics",
+                fromlist=["structural_similarity"],
+            ).structural_similarity,
+        ) as mocked_ssim:
+            calculate_quality_metrics(reference, reconstruction, border=2)
+
+        self.assertEqual(mocked_ssim.call_count, 2)
+        for call in mocked_ssim.call_args_list:
+            self.assertTrue(call.kwargs["gaussian_weights"])
+            self.assertEqual(call.kwargs["sigma"], 1.5)
+            self.assertFalse(call.kwargs["use_sample_covariance"])
+            self.assertEqual(call.kwargs["data_range"], 255.0)
+
     def test_border_crop_excludes_edge_only_errors(self) -> None:
         reference = np.full((24, 24, 3), 100, dtype=np.uint8)
         reconstruction = reference.copy()

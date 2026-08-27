@@ -101,6 +101,7 @@ def evaluate_bicubic_image(
         "degradation": "prepared_bicubic_lr",
         "lr_source_file": lr_image_path.name,
         "metric_border_pixels": config.scale,
+        "ssim_protocol": "gaussian_11x11_sigma_1.5_population_covariance",
         **metrics,
         **timing.as_dict(),
         "hr_width": hr_width,
