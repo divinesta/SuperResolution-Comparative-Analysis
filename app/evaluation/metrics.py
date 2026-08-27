@@ -5,7 +5,15 @@ from typing import TypeAlias
 import numpy as np
 from numpy.typing import NDArray
 from PIL import Image
-from skimage.metrics import peak_signal_noise_ratio, structural_similarity
+
+try:
+    from skimage.metrics import peak_signal_noise_ratio, structural_similarity
+except ImportError:
+    # Some notebook environments can retain an incomplete lazy-loader interface
+    # after upgrading scikit-image in a running kernel. The implementation
+    # modules remain available and provide the same metric functions.
+    from skimage.metrics._structural_similarity import structural_similarity
+    from skimage.metrics.simple_metrics import peak_signal_noise_ratio
 
 
 ImageInput: TypeAlias = Image.Image | NDArray[np.generic]

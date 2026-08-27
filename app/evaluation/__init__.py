@@ -1,22 +1,6 @@
-"""Shared image preparation and evaluation tools."""
+"""Shared image preparation and evaluation tools.
 
-from app.evaluation.images import (
-    align_hr_to_lr,
-    bicubic_downsample,
-    bicubic_upsample,
-    load_rgb_image,
-    modcrop,
-)
-from app.evaluation.metrics import calculate_quality_metrics
-from app.evaluation.timing import TimingStats, measure_runtime
-
-__all__ = [
-    "TimingStats",
-    "align_hr_to_lr",
-    "bicubic_downsample",
-    "bicubic_upsample",
-    "calculate_quality_metrics",
-    "load_rgb_image",
-    "measure_runtime",
-    "modcrop",
-]
+Submodules are intentionally not imported here. Keeping package initialisation
+lightweight allows dataset validation to run even when an optional metric
+dependency has an environment-specific import problem.
+"""
