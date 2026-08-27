@@ -17,10 +17,10 @@ from PIL import Image, __version__ as pillow_version
 
 from app.config import dataset_hr_directory, dataset_lr_directory
 from app.evaluation.images import (
-    align_hr_to_lr,
     bicubic_upsample,
     load_rgb_image,
     pair_image_paths,
+    validate_hr_lr_dimensions,
     validate_scale,
 )
 from app.evaluation.metrics import calculate_quality_metrics
@@ -74,7 +74,8 @@ def evaluate_bicubic_image(
     lr_image_path = Path(lr_path)
     source_hr = load_rgb_image(hr_image_path)
     lr_image = load_rgb_image(lr_image_path)
-    reference_hr = align_hr_to_lr(source_hr, lr_image, config.scale)
+    validate_hr_lr_dimensions(source_hr, lr_image, config.scale)
+    reference_hr = source_hr
 
     reconstruction, timing = measure_runtime(
         lambda: bicubic_upsample(lr_image, reference_hr.size),
@@ -101,6 +102,7 @@ def evaluate_bicubic_image(
         "degradation": "prepared_bicubic_lr",
         "lr_source_file": lr_image_path.name,
         "metric_border_pixels": config.scale,
+        "dimension_policy": "reconstruct_to_original_hr_size",
         "ssim_protocol": "gaussian_11x11_sigma_1.5_population_covariance",
         **metrics,
         **timing.as_dict(),

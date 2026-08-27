@@ -13,10 +13,12 @@ For every dataset image and scale:
    scale.
 3. Verify that the HR and LR filenames match and that their dimensions have the
    correct scale relationship.
-4. If required, crop only the HR image's bottom and right edges to align it with
-   the exact area represented by the prepared LR image.
+4. Reconstruct the prepared LR image to the original HR image's exact width and
+   height. Do not crop the HR image to `LR size x scale`; the downloaded LR files
+   were created from the complete original image, including dimensions that are
+   not evenly divisible by the scale.
 5. Give that same prepared LR input to every reconstruction method.
-6. Compare each reconstructed image with the aligned original HR image.
+6. Compare each reconstructed image with the original HR image.
 7. Save per-image measurements to CSV before creating summaries or report tables.
 
 The required scales are x2, x3, and x4. The required test datasets are Set5,

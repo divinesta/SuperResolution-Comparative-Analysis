@@ -63,12 +63,12 @@ def bicubic_upsample(lr_image: Image.Image, target_size: tuple[int, int]) -> Ima
     )
 
 
-def align_hr_to_lr(
+def validate_hr_lr_dimensions(
     hr_image: Image.Image,
     lr_image: Image.Image,
     scale: int,
-) -> Image.Image:
-    """Align an HR reference to the exact dimensions represented by a paired LR image."""
+) -> None:
+    """Confirm that a prepared LR image is the floor-scaled version of its HR pair."""
     validate_scale(scale)
     target_width = lr_image.width * scale
     target_height = lr_image.height * scale
@@ -80,9 +80,6 @@ def align_hr_to_lr(
             "HR/LR dimensions do not form a valid paired sample at "
             f"x{scale}: HR={hr_image.size}, LR={lr_image.size}."
         )
-
-    return hr_image.convert("RGB").crop((0, 0, target_width, target_height))
-
 
 def list_image_paths(directory: str | Path) -> list[Path]:
     """Return supported image files in deterministic filename order."""

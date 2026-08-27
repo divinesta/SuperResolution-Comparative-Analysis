@@ -14,15 +14,16 @@ from app.config import dataset_hr_directory, dataset_lr_directory, resolve_data_
 from app.evaluation.bicubic import (
     BicubicEvaluationConfig,
     evaluate_bicubic_dataset,
+    evaluate_bicubic_image,
     write_results_csv,
 )
 from app.evaluation.data_validation import validate_prepared_dataset
 from app.evaluation.images import (
-    align_hr_to_lr,
     bicubic_downsample,
     bicubic_upsample,
     modcrop,
     pair_image_paths,
+    validate_hr_lr_dimensions,
 )
 from app.evaluation.metrics import calculate_quality_metrics
 from app.evaluation.reporting import summarize_results
@@ -118,13 +119,39 @@ class MetricTests(unittest.TestCase):
 
 
 class PreparedPairTests(unittest.TestCase):
-    def test_hr_reference_is_aligned_to_prepared_lr_dimensions(self) -> None:
+    def test_floor_scaled_lr_dimensions_are_valid_without_cropping_hr(self) -> None:
         hr_image = Image.new("RGB", (101, 98), "white")
         lr_image = Image.new("RGB", (33, 32), "white")
 
-        aligned_hr = align_hr_to_lr(hr_image, lr_image, scale=3)
+        validate_hr_lr_dimensions(hr_image, lr_image, scale=3)
 
-        self.assertEqual(aligned_hr.size, (99, 96))
+        self.assertEqual(hr_image.size, (101, 98))
+
+    def test_bicubic_reconstructs_to_original_nondivisible_hr_size(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            hr_path = root / "sample.png"
+            lr_path = root / "sample_lr.png"
+            pixels = np.arange(25 * 25 * 3, dtype=np.uint8).reshape(25, 25, 3)
+            hr_image = Image.fromarray(pixels)
+            hr_image.save(hr_path)
+            hr_image.resize((8, 8), Image.Resampling.BICUBIC).save(lr_path)
+
+            record = evaluate_bicubic_image(
+                hr_path,
+                lr_path,
+                BicubicEvaluationConfig(
+                    dataset="Synthetic",
+                    scale=3,
+                    warmup_runs=0,
+                    timed_runs=1,
+                ),
+            )
+
+        self.assertEqual(record["hr_width"], 25)
+        self.assertEqual(record["hr_height"], 25)
+        self.assertEqual(record["lr_width"], 8)
+        self.assertEqual(record["dimension_policy"], "reconstruct_to_original_hr_size")
 
     def test_filename_mismatch_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:

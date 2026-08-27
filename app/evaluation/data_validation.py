@@ -6,7 +6,11 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from app.config import dataset_hr_directory, dataset_lr_directory
-from app.evaluation.images import align_hr_to_lr, load_rgb_image, pair_image_paths
+from app.evaluation.images import (
+    load_rgb_image,
+    pair_image_paths,
+    validate_hr_lr_dimensions,
+)
 
 
 EXPECTED_IMAGE_COUNTS = {
@@ -45,7 +49,7 @@ def validate_prepared_dataset(
     for hr_path, lr_path in pairs:
         hr_image = load_rgb_image(hr_path)
         lr_image = load_rgb_image(lr_path)
-        align_hr_to_lr(hr_image, lr_image, scale)
+        validate_hr_lr_dimensions(hr_image, lr_image, scale)
 
     return DatasetValidation(
         dataset=dataset,
