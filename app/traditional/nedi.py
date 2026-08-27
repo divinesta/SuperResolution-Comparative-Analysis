@@ -11,6 +11,7 @@ from dataclasses import dataclass
 
 import numpy as np
 from numpy.typing import NDArray
+from PIL import Image
 
 
 FloatImage = NDArray[np.float64]
@@ -47,6 +48,17 @@ class NEDIResult:
 
     image: FloatImage
     stats: NEDIStats
+
+
+@dataclass(frozen=True)
+class NEDIRGBResult:
+    """An RGB reconstruction assembled from NEDI luminance and bicubic chroma."""
+
+    image: Image.Image
+    stats: NEDIStats
+    native_size: tuple[int, int]
+    target_size: tuple[int, int]
+    dimension_adjusted: bool
 
 
 @dataclass
@@ -332,3 +344,57 @@ def nedi_upsample_x2_luminance(
     # Reassert exact source samples after both interpolation stages.
     output[::2, ::2] = source
     return NEDIResult(image=output, stats=stats.freeze())
+
+
+def nedi_upsample_x2_rgb(
+    image: Image.Image,
+    target_size: tuple[int, int],
+    config: NEDIConfig | None = None,
+) -> NEDIRGBResult:
+    """Apply native x2 NEDI to luminance and bicubic interpolation to chroma.
+
+    Native NEDI produces an insertion grid of ``(2h - 1, 2w - 1)``. When a
+    prepared benchmark pair has a different exact HR size, the assembled RGB
+    result is bicubically resized to that target and the adjustment is recorded.
+    """
+    target_width, target_height = target_size
+    if target_width <= 0 or target_height <= 0:
+        raise ValueError(f"Target size must be positive; received {target_size}.")
+
+    source_ycbcr = np.asarray(image.convert("YCbCr"), dtype=np.uint8)
+    luminance_result = nedi_upsample_x2_luminance(source_ycbcr[..., 0], config)
+    native_height, native_width = luminance_result.image.shape
+    native_size = (native_width, native_height)
+
+    cb_image = Image.fromarray(source_ycbcr[..., 1])
+    cr_image = Image.fromarray(source_ycbcr[..., 2])
+    cb_native = np.asarray(
+        cb_image.resize(native_size, resample=Image.Resampling.BICUBIC),
+        dtype=np.uint8,
+    )
+    cr_native = np.asarray(
+        cr_image.resize(native_size, resample=Image.Resampling.BICUBIC),
+        dtype=np.uint8,
+    )
+    assembled_ycbcr = np.empty((native_height, native_width, 3), dtype=np.uint8)
+    assembled_ycbcr[..., 0] = np.rint(
+        np.clip(luminance_result.image, 0.0, 255.0)
+    ).astype(np.uint8)
+    assembled_ycbcr[..., 1] = cb_native
+    assembled_ycbcr[..., 2] = cr_native
+    reconstruction = Image.fromarray(assembled_ycbcr, mode="YCbCr").convert("RGB")
+
+    dimension_adjusted = native_size != target_size
+    if dimension_adjusted:
+        reconstruction = reconstruction.resize(
+            target_size,
+            resample=Image.Resampling.BICUBIC,
+        )
+
+    return NEDIRGBResult(
+        image=reconstruction,
+        stats=luminance_result.stats,
+        native_size=native_size,
+        target_size=target_size,
+        dimension_adjusted=dimension_adjusted,
+    )

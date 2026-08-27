@@ -3,8 +3,13 @@
 import unittest
 
 import numpy as np
+from PIL import Image
 
-from app.traditional.nedi import NEDIConfig, nedi_upsample_x2_luminance
+from app.traditional.nedi import (
+    NEDIConfig,
+    nedi_upsample_x2_luminance,
+    nedi_upsample_x2_rgb,
+)
 
 
 class NEDIConfigurationTests(unittest.TestCase):
@@ -118,6 +123,26 @@ class NEDICoreTests(unittest.TestCase):
             with self.subTest(shape=image.shape):
                 with self.assertRaises(ValueError):
                     nedi_upsample_x2_luminance(image)
+
+    def test_rgb_reconstruction_uses_native_size_and_rgb_mode(self) -> None:
+        random = np.random.default_rng(24)
+        source = Image.fromarray(random.integers(0, 256, size=(12, 10, 3), dtype=np.uint8))
+
+        result = nedi_upsample_x2_rgb(source, (19, 23))
+
+        self.assertEqual(result.image.mode, "RGB")
+        self.assertEqual(result.image.size, (19, 23))
+        self.assertEqual(result.native_size, (19, 23))
+        self.assertFalse(result.dimension_adjusted)
+
+    def test_rgb_reconstruction_records_target_size_adjustment(self) -> None:
+        source = Image.new("RGB", (10, 12), "blue")
+
+        result = nedi_upsample_x2_rgb(source, (20, 24))
+
+        self.assertEqual(result.image.size, (20, 24))
+        self.assertEqual(result.native_size, (19, 23))
+        self.assertTrue(result.dimension_adjusted)
 
 
 if __name__ == "__main__":
