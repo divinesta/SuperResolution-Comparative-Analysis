@@ -46,6 +46,13 @@ class FSRCNNTests(unittest.TestCase):
         self.assertEqual(tuple(tensor.shape), (1, 1, 7, 9))
         self.assertEqual(tensor.dtype, torch.float32)
 
+    def test_published_configuration_has_expected_parameter_count(self) -> None:
+        model = FSRCNN(scale_factor=2)
+
+        parameter_count = sum(parameter.numel() for parameter in model.parameters())
+
+        self.assertEqual(parameter_count, 12_809)
+
     def test_unsupported_scale_is_rejected(self) -> None:
         with self.assertRaisesRegex(ValueError, "2, 3, or 4"):
             FSRCNN(scale_factor=8)

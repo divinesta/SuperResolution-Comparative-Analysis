@@ -139,6 +139,12 @@ Before full evaluation, we will explicitly record the remaining protocol choices
 
 ### Phase 3: FSRCNN and IMDN
 
+**Current progress (30 August 2026):** The IMDN GPU evaluation is complete for
+all required datasets and scales. FSRCNN is the active next task. The old Step 6
+under the First Milestone is not a blocker for beginning FSRCNN; remaining CPU,
+FLOPs, or fine-tuning decisions can be completed after both pretrained GPU
+pipelines have comparable pilot evidence.
+
 **Tasks:**
 
 - Set up PyTorch/BasicSR in Colab.

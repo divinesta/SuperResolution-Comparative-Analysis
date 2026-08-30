@@ -70,12 +70,12 @@ IMDN_CHECKPOINTS = {
 
 
 _FSRCNN_REPOSITORY = "https://github.com/yjn870/FSRCNN-pytorch"
-_FSRCNN_DROPBOX_ROOT = "https://www.dropbox.com/s"
+_FSRCNN_DROPBOX_ROOT = "https://dl.dropboxusercontent.com/s"
 FSRCNN_CHECKPOINTS = {
     2: CheckpointProvenance(
         model="fsrcnn",
         scale=2,
-        source_url=f"{_FSRCNN_DROPBOX_ROOT}/1k3dker6g7hz76s/fsrcnn_x2.pth?dl=1",
+        source_url=f"{_FSRCNN_DROPBOX_ROOT}/1k3dker6g7hz76s/fsrcnn_x2.pth",
         original_filename="fsrcnn_x2.pth",
         sha256="1af70e2cbf0d11b942008d6c425e469e9fe275a68f3ac8b6c21e8672d6e67b69",
         size_bytes=54_998,
@@ -87,7 +87,7 @@ FSRCNN_CHECKPOINTS = {
     3: CheckpointProvenance(
         model="fsrcnn",
         scale=3,
-        source_url=f"{_FSRCNN_DROPBOX_ROOT}/pm1ed2nyboulz5z/fsrcnn_x3.pth?dl=1",
+        source_url=f"{_FSRCNN_DROPBOX_ROOT}/pm1ed2nyboulz5z/fsrcnn_x3.pth",
         original_filename="fsrcnn_x3.pth",
         sha256="f65b55819c1258048bc8c1ca96f9e24bd4339f779951d7f928144c08e3868d75",
         size_bytes=54_998,
@@ -99,7 +99,7 @@ FSRCNN_CHECKPOINTS = {
     4: CheckpointProvenance(
         model="fsrcnn",
         scale=4,
-        source_url=f"{_FSRCNN_DROPBOX_ROOT}/vsvumpopupdpmmu/fsrcnn_x4.pth?dl=1",
+        source_url=f"{_FSRCNN_DROPBOX_ROOT}/vsvumpopupdpmmu/fsrcnn_x4.pth",
         original_filename="fsrcnn_x4.pth",
         sha256="c15150d6787d487f38a68e66be5ec8a964182403af494e6a935fa03eeb56a630",
         size_bytes=54_998,
