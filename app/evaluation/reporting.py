@@ -44,3 +44,47 @@ def summarize_results(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
             }
         )
     return summaries
+
+
+def summarize_deep_learning_results(
+    records: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Add model size, memory, and dimension counts to quality summaries."""
+    summaries = summarize_results(records)
+    grouped: dict[tuple[str, str, str], list[dict[str, Any]]] = defaultdict(list)
+    for record in records:
+        grouped[
+            (
+                str(record["dataset"]),
+                str(record["scale"]),
+                str(record["method"]),
+            )
+        ].append(record)
+
+    for summary in summaries:
+        group = grouped[
+            (
+                str(summary["dataset"]),
+                str(summary["scale"]),
+                str(summary["method"]),
+            )
+        ]
+        parameter_counts = {int(record["parameter_count"]) for record in group}
+        if len(parameter_counts) != 1:
+            raise ValueError("One summary group contains inconsistent parameter counts.")
+        summary.update(
+            {
+                "parameter_count": parameter_counts.pop(),
+                "peak_gpu_memory_mean_mb": mean(
+                    float(record["peak_gpu_memory_mb"]) for record in group
+                ),
+                "peak_gpu_memory_max_mb": max(
+                    float(record["peak_gpu_memory_mb"]) for record in group
+                ),
+                "dimension_adjusted_count": sum(
+                    str(record["dimension_adjusted"]).lower() == "true"
+                    for record in group
+                ),
+            }
+        )
+    return summaries

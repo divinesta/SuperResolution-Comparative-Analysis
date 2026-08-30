@@ -18,6 +18,7 @@ from app.evaluation.bicubic import (
     write_results_csv,
 )
 from app.evaluation.data_validation import validate_prepared_dataset
+from app.evaluation.experiment import read_results_csv
 from app.evaluation.images import (
     bicubic_downsample,
     bicubic_upsample,
@@ -26,7 +27,7 @@ from app.evaluation.images import (
     validate_hr_lr_dimensions,
 )
 from app.evaluation.metrics import calculate_quality_metrics
-from app.evaluation.reporting import summarize_results
+from app.evaluation.reporting import summarize_deep_learning_results, summarize_results
 from app.evaluation.timing import measure_runtime
 
 
@@ -224,8 +225,45 @@ class ReportingTests(unittest.TestCase):
         self.assertEqual(summary[0]["psnr_y"], 32.0)
         self.assertEqual(summary[0]["psnr_rgb"], 31.0)
 
+    def test_deep_learning_summary_includes_memory_and_adjustment_counts(self) -> None:
+        records = []
+        for image, adjusted, memory in (
+            ("a.png", False, 100.0),
+            ("b.png", True, 120.0),
+        ):
+            records.append(
+                {
+                    "dataset": "Set5",
+                    "image": image,
+                    "scale": "x3",
+                    "method": "imdn",
+                    "psnr_y": 35.0,
+                    "ssim_y": 0.9,
+                    "psnr_rgb": 33.0,
+                    "ssim_rgb": 0.88,
+                    "latency_mean_ms": 20.0,
+                    "latency_median_ms": 19.0,
+                    "parameter_count": 703059,
+                    "peak_gpu_memory_mb": memory,
+                    "dimension_adjusted": adjusted,
+                }
+            )
+
+        summary = summarize_deep_learning_results(records)[0]
+
+        self.assertEqual(summary["parameter_count"], 703059)
+        self.assertEqual(summary["peak_gpu_memory_mean_mb"], 110.0)
+        self.assertEqual(summary["peak_gpu_memory_max_mb"], 120.0)
+        self.assertEqual(summary["dimension_adjusted_count"], 1)
+
 
 class DatasetEvaluationTests(unittest.TestCase):
+    def test_missing_result_checkpoint_loads_as_empty(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            missing = Path(temporary_directory) / "not-created.csv"
+
+            self.assertEqual(read_results_csv(missing), [])
+
     def test_dataset_evaluation_writes_a_non_destructive_csv(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             root = Path(temporary_directory)

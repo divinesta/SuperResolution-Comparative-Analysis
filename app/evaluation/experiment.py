@@ -56,3 +56,15 @@ def write_results_csv(
         writer.writerows(records)
     temporary_path.replace(csv_path)
     return csv_path
+
+
+def read_results_csv(output_path: str | Path) -> list[dict[str, str]]:
+    """Read an existing result checkpoint, or return an empty list if absent."""
+    csv_path = Path(output_path)
+    if not csv_path.exists():
+        return []
+    if not csv_path.is_file():
+        raise ValueError(f"Result checkpoint is not a file: {csv_path}")
+
+    with csv_path.open(newline="", encoding="utf-8") as file:
+        return list(csv.DictReader(file))
