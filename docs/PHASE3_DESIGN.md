@@ -30,6 +30,10 @@ The order is:
 - FSRCNN follows its original luminance-only policy: the network reconstructs Y,
   while Cb and Cr are enlarged with bicubic interpolation before RGB assembly.
 - IMDN reconstructs RGB directly, matching its official implementation.
+- The initial FSRCNN checkpoints are the published yjn870 FSRCNN(56,12,4)
+  x2/x3/x4 weights trained on the 91-image dataset. Results must retain this
+  training-dataset label; they are pilot evidence for deciding whether the
+  project needs a controlled DIV2K fine-tune.
 - Both models receive the same prepared LR files used by bicubic and NEDI.
 - Both are evaluated against the same uncropped HR file, with the scale-sized
   metric border defined in `docs/EVALUATION_PROTOCOL.md`.

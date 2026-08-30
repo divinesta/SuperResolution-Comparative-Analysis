@@ -69,6 +69,48 @@ IMDN_CHECKPOINTS = {
 }
 
 
+_FSRCNN_REPOSITORY = "https://github.com/yjn870/FSRCNN-pytorch"
+_FSRCNN_DROPBOX_ROOT = "https://www.dropbox.com/s"
+FSRCNN_CHECKPOINTS = {
+    2: CheckpointProvenance(
+        model="fsrcnn",
+        scale=2,
+        source_url=f"{_FSRCNN_DROPBOX_ROOT}/1k3dker6g7hz76s/fsrcnn_x2.pth?dl=1",
+        original_filename="fsrcnn_x2.pth",
+        sha256="1af70e2cbf0d11b942008d6c425e469e9fe275a68f3ac8b6c21e8672d6e67b69",
+        size_bytes=54_998,
+        architecture="FSRCNN luminance, d=56, s=12, m=4",
+        training_dataset="91-image",
+        degradation="bicubic",
+        source_repository=_FSRCNN_REPOSITORY,
+    ),
+    3: CheckpointProvenance(
+        model="fsrcnn",
+        scale=3,
+        source_url=f"{_FSRCNN_DROPBOX_ROOT}/pm1ed2nyboulz5z/fsrcnn_x3.pth?dl=1",
+        original_filename="fsrcnn_x3.pth",
+        sha256="f65b55819c1258048bc8c1ca96f9e24bd4339f779951d7f928144c08e3868d75",
+        size_bytes=54_998,
+        architecture="FSRCNN luminance, d=56, s=12, m=4",
+        training_dataset="91-image",
+        degradation="bicubic",
+        source_repository=_FSRCNN_REPOSITORY,
+    ),
+    4: CheckpointProvenance(
+        model="fsrcnn",
+        scale=4,
+        source_url=f"{_FSRCNN_DROPBOX_ROOT}/vsvumpopupdpmmu/fsrcnn_x4.pth?dl=1",
+        original_filename="fsrcnn_x4.pth",
+        sha256="c15150d6787d487f38a68e66be5ec8a964182403af494e6a935fa03eeb56a630",
+        size_bytes=54_998,
+        architecture="FSRCNN luminance, d=56, s=12, m=4",
+        training_dataset="91-image",
+        degradation="bicubic",
+        source_repository=_FSRCNN_REPOSITORY,
+    ),
+}
+
+
 def sha256_file(path: str | Path) -> str:
     digest = hashlib.sha256()
     with Path(path).open("rb") as file:
@@ -115,6 +157,56 @@ def download_official_imdn_checkpoint(
             )
         if digest.hexdigest() != provenance.sha256:
             raise ValueError("Downloaded IMDN checkpoint failed SHA-256 verification.")
+        temporary.replace(target)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+    manifest = target.with_suffix(".provenance.json")
+    manifest.write_text(
+        json.dumps(asdict(provenance), indent=2) + "\n",
+        encoding="utf-8",
+    )
+    return target
+
+
+def download_pretrained_fsrcnn_checkpoint(
+    checkpoint_root: str | Path,
+    scale: int,
+) -> Path:
+    """Download one published FSRCNN checkpoint and verify its exact content."""
+    try:
+        provenance = FSRCNN_CHECKPOINTS[scale]
+    except KeyError as error:
+        raise ValueError(f"FSRCNN scale must be 2, 3, or 4; received {scale}.") from error
+
+    config = DeepLearningModelConfig("fsrcnn", scale, Path(checkpoint_root))
+    target = config.checkpoint_path
+    target.parent.mkdir(parents=True, exist_ok=True)
+    if target.exists():
+        if target.stat().st_size != provenance.size_bytes:
+            raise ValueError(f"Existing FSRCNN checkpoint has the wrong size: {target}")
+        if sha256_file(target) != provenance.sha256:
+            raise ValueError(f"Existing FSRCNN checkpoint failed SHA-256: {target}")
+        return target
+
+    temporary = target.with_suffix(f"{target.suffix}.download")
+    try:
+        digest = hashlib.sha256()
+        downloaded_size = 0
+        with urlopen(provenance.source_url, timeout=60) as response:
+            with temporary.open("wb") as output:
+                while block := response.read(1024 * 1024):
+                    output.write(block)
+                    digest.update(block)
+                    downloaded_size += len(block)
+
+        if downloaded_size != provenance.size_bytes:
+            raise ValueError(
+                "Downloaded FSRCNN checkpoint has the wrong size: "
+                f"expected {provenance.size_bytes}, received {downloaded_size}."
+            )
+        if digest.hexdigest() != provenance.sha256:
+            raise ValueError("Downloaded FSRCNN checkpoint failed SHA-256 verification.")
         temporary.replace(target)
     finally:
         temporary.unlink(missing_ok=True)

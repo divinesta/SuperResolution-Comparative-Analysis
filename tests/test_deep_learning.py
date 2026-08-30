@@ -6,11 +6,20 @@ from pathlib import Path
 from PIL import Image
 
 from app.deep_learning.alignment import align_reconstruction_to_target
-from app.deep_learning.checkpoints import IMDN_CHECKPOINTS
+from app.deep_learning.checkpoints import FSRCNN_CHECKPOINTS, IMDN_CHECKPOINTS
 from app.deep_learning.config import DeepLearningModelConfig
 
 
 class DeepLearningModelConfigTests(unittest.TestCase):
+    def test_fsrcnn_metadata_covers_every_required_scale(self) -> None:
+        self.assertEqual(set(FSRCNN_CHECKPOINTS), {2, 3, 4})
+        for scale, checkpoint in FSRCNN_CHECKPOINTS.items():
+            self.assertEqual(checkpoint.scale, scale)
+            self.assertEqual(len(checkpoint.sha256), 64)
+            self.assertGreater(checkpoint.size_bytes, 0)
+            self.assertEqual(checkpoint.training_dataset, "91-image")
+            self.assertEqual(checkpoint.degradation, "bicubic")
+
     def test_official_imdn_metadata_covers_every_required_scale(self) -> None:
         self.assertEqual(set(IMDN_CHECKPOINTS), {2, 3, 4})
         for scale, checkpoint in IMDN_CHECKPOINTS.items():
