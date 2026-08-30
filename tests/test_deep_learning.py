@@ -3,6 +3,9 @@
 import unittest
 from pathlib import Path
 
+from PIL import Image
+
+from app.deep_learning.alignment import align_reconstruction_to_target
 from app.deep_learning.checkpoints import IMDN_CHECKPOINTS
 from app.deep_learning.config import DeepLearningModelConfig
 
@@ -44,6 +47,31 @@ class DeepLearningModelConfigTests(unittest.TestCase):
     def test_unsupported_scale_is_rejected(self) -> None:
         with self.assertRaisesRegex(ValueError, "2, 3, or 4"):
             DeepLearningModelConfig("imdn", 8, Path("weights"))
+
+
+class DeepLearningAlignmentTests(unittest.TestCase):
+    def test_exact_native_size_is_not_resampled(self) -> None:
+        image = Image.new("RGB", (32, 24), "white")
+
+        result = align_reconstruction_to_target(image, (32, 24))
+
+        self.assertFalse(result.dimension_adjusted)
+        self.assertEqual(result.native_size, (32, 24))
+        self.assertEqual(result.image.size, (32, 24))
+
+    def test_smaller_native_grid_is_adjusted_to_uncropped_hr_size(self) -> None:
+        image = Image.new("RGB", (30, 21), "white")
+
+        result = align_reconstruction_to_target(image, (32, 23))
+
+        self.assertTrue(result.dimension_adjusted)
+        self.assertEqual(result.native_size, (30, 21))
+        self.assertEqual(result.target_size, (32, 23))
+        self.assertEqual(result.image.size, (32, 23))
+
+    def test_nonpositive_target_size_is_rejected(self) -> None:
+        with self.assertRaisesRegex(ValueError, "positive"):
+            align_reconstruction_to_target(Image.new("RGB", (8, 8)), (0, 8))
 
 
 if __name__ == "__main__":

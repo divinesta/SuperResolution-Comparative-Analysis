@@ -33,6 +33,17 @@ for x2 and repeated for x4. The required x3 result uses the documented NEDI x2
 plus bicubic hybrid because the original NEDI algorithm only supports
 power-of-two magnification factors.
 
+## Deep-learning reconstruction policy
+
+FSRCNN and IMDN first produce their native scale-specific output of
+`LR width x scale` by `LR height x scale`. When that native output is smaller
+than the uncropped HR reference because the prepared LR dimensions were rounded
+down, the complete model output is bicubically adjusted once to the exact HR
+size. Records must store the native dimensions, target dimensions, and whether
+this adjustment occurred. This follows the same fixed project rule used by the
+traditional methods: every method is evaluated against the complete original
+HR image rather than a method-specific crop.
+
 ## Quality measurements
 
 Each reconstruction records both:

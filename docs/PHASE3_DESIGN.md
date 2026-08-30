@@ -33,6 +33,9 @@ The order is:
 - Both models receive the same prepared LR files used by bicubic and NEDI.
 - Both are evaluated against the same uncropped HR file, with the scale-sized
   metric border defined in `docs/EVALUATION_PROTOCOL.md`.
+- A native neural output that is smaller than the uncropped HR dimensions is
+  bicubically adjusted once to the exact target size, with the native size and
+  adjustment flag recorded in the result.
 
 ## Checkpoint provenance
 
