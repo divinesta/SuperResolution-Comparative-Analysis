@@ -90,7 +90,7 @@ def evaluate_nedi_image(
         "degradation": "prepared_bicubic_lr",
         "lr_source_file": lr_image_path.name,
         "metric_border_pixels": config.scale,
-        "dimension_policy": "native_nedi_grid_then_target_size_adjustment",
+        "dimension_policy": "native_nedi_grid_then_full_target_size_adjustment",
         "ssim_protocol": "gaussian_11x11_sigma_1.5_population_covariance",
         "nedi_window_size": config.window_size,
         "nedi_edge_threshold": config.edge_threshold,

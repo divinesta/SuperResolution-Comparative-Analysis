@@ -399,8 +399,9 @@ def nedi_upsample_x2_rgb(
     Native NEDI produces a ``(2h, 2w)`` even-insertion grid. Before comparison
     with a bicubic-prepared HR image, luminance is shifted by half a pixel so
     that it occupies the same sampling grid as Pillow bicubic resizing. When
-    a prepared pair is larger than that native 2x size, bicubic supplies only
-    the missing outer boundary.
+    a prepared pair is one pixel larger than that native 2x size, the complete
+    reconstruction is bicubically resized to the target. This keeps every
+    output pixel on the same grid as the HR reference.
     """
     target_width, target_height = target_size
     if target_width <= 0 or target_height <= 0:
@@ -430,18 +431,10 @@ def nedi_upsample_x2_rgb(
 
     dimension_adjusted = native_size != target_size
     if dimension_adjusted:
-        if target_width >= native_width and target_height >= native_height:
-            boundary_extended = image.convert("RGB").resize(
-                target_size,
-                resample=Image.Resampling.BICUBIC,
-            )
-            boundary_extended.paste(reconstruction, (0, 0))
-            reconstruction = boundary_extended
-        else:
-            reconstruction = reconstruction.resize(
-                target_size,
-                resample=Image.Resampling.BICUBIC,
-            )
+        reconstruction = reconstruction.resize(
+            target_size,
+            resample=Image.Resampling.BICUBIC,
+        )
 
     return NEDIRGBResult(
         image=reconstruction,

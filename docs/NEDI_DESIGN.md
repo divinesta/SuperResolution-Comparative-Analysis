@@ -96,9 +96,11 @@ reference. This is an evaluation-alignment step, not a change to the
 covariance interpolator. Without it, even a correct NEDI reconstruction
 measures several dB below bicubic solely from the grid offset.
 
-If a prepared pair is larger than the native `2 x LR` size, bicubic supplies
-only the missing outer boundary. The result record states whether a size
-adjustment occurred and records `nedi_sampling_grid`.
+If a prepared pair is larger than the native `2 x LR` size, the complete NEDI
+result is bicubically resized to the exact HR size. This keeps all NEDI pixels
+on the same sampling grid as the HR reference; pasting the native result into
+only the top-left of a larger image would misalign the image. The result record
+states whether a size adjustment occurred and records `nedi_sampling_grid`.
 
 ## Boundary and Numerical Fallbacks
 

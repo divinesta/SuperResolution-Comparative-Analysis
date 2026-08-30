@@ -150,8 +150,8 @@ class NEDICoreTests(unittest.TestCase):
         self.assertEqual(result.native_size, (20, 24))
         self.assertTrue(result.dimension_adjusted)
         np.testing.assert_array_equal(
-            np.asarray(result.image)[:24, :20],
-            np.asarray(native.image),
+            np.asarray(result.image),
+            np.asarray(native.image.resize((21, 25), Image.Resampling.BICUBIC)),
         )
 
     def test_second_stage_uses_rotated_lattice_neighbours(self) -> None:
