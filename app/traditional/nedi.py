@@ -3,6 +3,10 @@
 The implementation follows the two-stage interpolation described by Li and
 Orchard. It deliberately contains no dataset loading, metric calculation, or
 result writing; those responsibilities belong to the evaluation layer.
+
+NEDI is defined only for doubling. The x3 and x4 evaluation scales are reached
+by cascading native x2 passes and resizing once to the exact HR size; see
+``nedi_upsample_rgb`` for the per-scale strategies.
 """
 
 from __future__ import annotations
@@ -67,6 +71,7 @@ class NEDIRGBResult:
     native_size: tuple[int, int]
     target_size: tuple[int, int]
     dimension_adjusted: bool
+    native_passes: int = 1
 
 
 @dataclass
@@ -442,4 +447,77 @@ def nedi_upsample_x2_rgb(
         native_size=native_size,
         target_size=target_size,
         dimension_adjusted=dimension_adjusted,
+    )
+
+
+def _combine_stats(first: NEDIStats, second: NEDIStats) -> NEDIStats:
+    """Add the pixel counts of two native passes into one cascade total."""
+    return NEDIStats(
+        interpolated_pixel_count=(
+            first.interpolated_pixel_count + second.interpolated_pixel_count
+        ),
+        edge_pixel_count=first.edge_pixel_count + second.edge_pixel_count,
+        nedi_pixel_count=first.nedi_pixel_count + second.nedi_pixel_count,
+        bilinear_fallback_count=(
+            first.bilinear_fallback_count + second.bilinear_fallback_count
+        ),
+        numerical_fallback_count=(
+            first.numerical_fallback_count + second.numerical_fallback_count
+        ),
+    )
+
+
+# How each evaluation scale is reached from a native doubling algorithm.
+NEDI_SCALE_STRATEGIES = {
+    2: "native_x2",
+    3: "native_x2_then_bicubic_to_target",
+    4: "native_x2_twice_then_bicubic_to_target",
+}
+NEDI_NATIVE_PASSES = {2: 1, 3: 1, 4: 2}
+
+
+def nedi_upsample_rgb(
+    image: Image.Image,
+    scale: int,
+    target_size: tuple[int, int],
+    config: NEDIConfig | None = None,
+) -> NEDIRGBResult:
+    """Reconstruct an RGB image at x2, x3, or x4 using native NEDI doublings.
+
+    NEDI itself only doubles, so the higher scales cascade it:
+
+    * ``x2`` — one native pass, then the usual half-pixel alignment.
+    * ``x3`` — one native pass, then a single bicubic resize to the HR size.
+    * ``x4`` — two native passes, then a resize only if the prepared HR pair is
+      not exactly four times the LR size.
+
+    Every pass leaves its output on the Pillow resize grid, so the second pass
+    and the final resize inherit a consistent sampling convention. Pixel counts
+    from both passes are summed, and ``native_size``/``dimension_adjusted``
+    describe the final pass.
+    """
+    if scale not in NEDI_SCALE_STRATEGIES:
+        raise ValueError(f"NEDI supports scales 2, 3, and 4; received x{scale}.")
+
+    if scale == 4:
+        intermediate_size = (image.width * 2, image.height * 2)
+        first_pass = nedi_upsample_x2_rgb(image, intermediate_size, config)
+        second_pass = nedi_upsample_x2_rgb(first_pass.image, target_size, config)
+        return NEDIRGBResult(
+            image=second_pass.image,
+            stats=_combine_stats(first_pass.stats, second_pass.stats),
+            native_size=second_pass.native_size,
+            target_size=target_size,
+            dimension_adjusted=second_pass.dimension_adjusted,
+            native_passes=2,
+        )
+
+    single_pass = nedi_upsample_x2_rgb(image, target_size, config)
+    return NEDIRGBResult(
+        image=single_pass.image,
+        stats=single_pass.stats,
+        native_size=single_pass.native_size,
+        target_size=target_size,
+        dimension_adjusted=single_pass.dimension_adjusted,
+        native_passes=1,
     )

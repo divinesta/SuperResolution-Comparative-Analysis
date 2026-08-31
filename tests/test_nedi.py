@@ -6,9 +6,11 @@ import numpy as np
 from PIL import Image
 
 from app.traditional.nedi import (
+    NEDI_NATIVE_PASSES,
     NEDIConfig,
     _shift_half_pixel,
     _stage_two_observations,
+    nedi_upsample_rgb,
     nedi_upsample_x2_luminance,
     nedi_upsample_x2_rgb,
 )
@@ -210,6 +212,86 @@ class NEDICoreTests(unittest.TestCase):
         self.assertEqual(result.native_size, (28, 32))
         self.assertEqual(result.image.size, (28, 32))
         self.assertFalse(result.dimension_adjusted)
+
+
+class NEDIScaleCascadeTests(unittest.TestCase):
+    """Cover the x3 and x4 strategies built from native x2 doublings."""
+
+    @staticmethod
+    def _textured_lr(width: int, height: int) -> Image.Image:
+        columns, rows = np.meshgrid(np.arange(width), np.arange(height))
+        pattern = 128.0 + 90.0 * np.sin(columns / 2.0) * np.cos(rows / 3.0)
+        stacked = np.repeat(pattern[:, :, None], 3, axis=2)
+        return Image.fromarray(stacked.astype(np.uint8), mode="RGB")
+
+    def test_every_supported_scale_returns_the_exact_target_size(self) -> None:
+        lr_image = self._textured_lr(24, 20)
+
+        for scale in (2, 3, 4):
+            with self.subTest(scale=scale):
+                target = (lr_image.width * scale, lr_image.height * scale)
+
+                result = nedi_upsample_rgb(lr_image, scale, target)
+
+                self.assertEqual(result.image.size, target)
+                self.assertEqual(result.image.mode, "RGB")
+
+    def test_native_pass_count_matches_the_documented_strategy(self) -> None:
+        lr_image = self._textured_lr(24, 20)
+
+        for scale, expected_passes in ((2, 1), (3, 1), (4, 2)):
+            with self.subTest(scale=scale):
+                result = nedi_upsample_rgb(
+                    lr_image,
+                    scale,
+                    (lr_image.width * scale, lr_image.height * scale),
+                )
+
+                self.assertEqual(result.native_passes, expected_passes)
+                self.assertEqual(result.native_passes, NEDI_NATIVE_PASSES[scale])
+
+    def test_x4_sums_the_pixel_counts_of_both_native_passes(self) -> None:
+        lr_image = self._textured_lr(24, 20)
+        target = (lr_image.width * 4, lr_image.height * 4)
+
+        single = nedi_upsample_rgb(lr_image, 2, (lr_image.width * 2, lr_image.height * 2))
+        cascade = nedi_upsample_rgb(lr_image, 4, target)
+
+        # The second pass works on a doubled image, so the cascade must count
+        # strictly more interpolated pixels than one pass alone.
+        self.assertGreater(
+            cascade.stats.interpolated_pixel_count,
+            single.stats.interpolated_pixel_count,
+        )
+        self.assertEqual(
+            cascade.stats.interpolated_pixel_count,
+            cascade.stats.nedi_pixel_count + cascade.stats.bilinear_fallback_count,
+        )
+
+    def test_x4_needs_no_resize_when_the_pair_is_an_exact_four_times_match(self) -> None:
+        lr_image = self._textured_lr(20, 16)
+
+        result = nedi_upsample_rgb(lr_image, 4, (80, 64))
+
+        self.assertFalse(result.dimension_adjusted)
+        self.assertEqual(result.native_size, (80, 64))
+
+    def test_x3_records_the_single_resize_onto_the_hr_grid(self) -> None:
+        lr_image = self._textured_lr(20, 16)
+
+        result = nedi_upsample_rgb(lr_image, 3, (60, 48))
+
+        self.assertTrue(result.dimension_adjusted)
+        self.assertEqual(result.native_size, (40, 32))
+        self.assertEqual(result.image.size, (60, 48))
+
+    def test_unsupported_scales_are_rejected(self) -> None:
+        lr_image = self._textured_lr(12, 12)
+
+        for invalid_scale in (1, 5, 8):
+            with self.subTest(invalid_scale=invalid_scale):
+                with self.assertRaises(ValueError):
+                    nedi_upsample_rgb(lr_image, invalid_scale, (96, 96))
 
 
 if __name__ == "__main__":

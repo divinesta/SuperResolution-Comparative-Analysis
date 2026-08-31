@@ -1,4 +1,4 @@
-"""NEDI x2 evaluation using the project's fixed super-resolution protocol."""
+"""NEDI x2/x3/x4 evaluation using the project's fixed super-resolution protocol."""
 
 from __future__ import annotations
 
@@ -15,15 +15,20 @@ from app.evaluation.images import (
     load_rgb_image,
     pair_image_paths,
     validate_hr_lr_dimensions,
+    validate_scale,
 )
 from app.evaluation.metrics import calculate_quality_metrics
 from app.evaluation.timing import measure_runtime
-from app.traditional.nedi import NEDIConfig, nedi_upsample_x2_rgb
+from app.traditional.nedi import (
+    NEDI_SCALE_STRATEGIES,
+    NEDIConfig,
+    nedi_upsample_rgb,
+)
 
 
 @dataclass(frozen=True)
 class NEDIEvaluationConfig:
-    """Settings shared by every native NEDI x2 image evaluation."""
+    """Settings shared by every native NEDI image evaluation."""
 
     dataset: str
     scale: int = 2
@@ -35,8 +40,7 @@ class NEDIEvaluationConfig:
     def __post_init__(self) -> None:
         if not self.dataset.strip():
             raise ValueError("Dataset name cannot be empty.")
-        if self.scale != 2:
-            raise ValueError("The native NEDI evaluator currently supports x2 only.")
+        validate_scale(self.scale)
         NEDIConfig(
             window_size=self.window_size,
             edge_threshold=self.edge_threshold,
@@ -54,7 +58,7 @@ def evaluate_nedi_image(
     *,
     sr_output_dir: str | Path | None = None,
 ) -> dict[str, Any]:
-    """Evaluate one prepared HR/LR pair with the native NEDI x2 method."""
+    """Evaluate one prepared HR/LR pair with the native NEDI method."""
     hr_image_path = Path(hr_path)
     lr_image_path = Path(lr_path)
     reference_hr = load_rgb_image(hr_image_path)
@@ -66,7 +70,12 @@ def evaluate_nedi_image(
     )
 
     reconstruction_result, timing = measure_runtime(
-        lambda: nedi_upsample_x2_rgb(lr_image, reference_hr.size, nedi_config),
+        lambda: nedi_upsample_rgb(
+            lr_image,
+            config.scale,
+            reference_hr.size,
+            nedi_config,
+        ),
         warmup_runs=config.warmup_runs,
         timed_runs=config.timed_runs,
     )
@@ -77,7 +86,7 @@ def evaluate_nedi_image(
     )
 
     if sr_output_dir is not None:
-        sr_name = f"{hr_image_path.stem}_nedi_x2.png"
+        sr_name = f"{hr_image_path.stem}_nedi_x{config.scale}.png"
         save_image(reconstruction_result.image, Path(sr_output_dir) / sr_name)
 
     hr_width, hr_height = reference_hr.size
@@ -85,7 +94,7 @@ def evaluate_nedi_image(
     return {
         "dataset": config.dataset,
         "image": hr_image_path.name,
-        "scale": "x2",
+        "scale": f"x{config.scale}",
         "method": "nedi",
         "degradation": "prepared_bicubic_lr",
         "lr_source_file": lr_image_path.name,
@@ -94,8 +103,8 @@ def evaluate_nedi_image(
         "ssim_protocol": "gaussian_11x11_sigma_1.5_population_covariance",
         "nedi_window_size": config.window_size,
         "nedi_edge_threshold": config.edge_threshold,
-        "nedi_scale_strategy": "native_x2",
-        "nedi_native_passes": 1,
+        "nedi_scale_strategy": NEDI_SCALE_STRATEGIES[config.scale],
+        "nedi_native_passes": reconstruction_result.native_passes,
         "nedi_edge_pixel_count": reconstruction_result.stats.edge_pixel_count,
         "nedi_pixel_count": reconstruction_result.stats.nedi_pixel_count,
         "nedi_bilinear_fallback_count": (
@@ -127,7 +136,7 @@ def evaluate_nedi_dataset(
     sr_output_dir: str | Path | None = None,
     max_images: int | None = None,
 ) -> list[dict[str, Any]]:
-    """Evaluate prepared x2 pairs, optionally limiting a pilot to early files."""
+    """Evaluate prepared pairs, optionally limiting a pilot to early files."""
     if max_images is not None and max_images <= 0:
         raise ValueError("max_images must be greater than zero when supplied.")
 
@@ -146,8 +155,9 @@ def evaluate_nedi_dataset(
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Evaluate native NEDI x2.")
+    parser = argparse.ArgumentParser(description="Evaluate native NEDI at x2, x3, or x4.")
     parser.add_argument("--dataset", required=True, help="Dataset label, for example Set5.")
+    parser.add_argument("--scale", type=int, default=2, choices=(2, 3, 4))
     parser.add_argument("--hr-dir", type=Path, help="Direct HR image directory.")
     parser.add_argument("--lr-dir", type=Path, help="Matching prepared LR image directory.")
     parser.add_argument("--data-root", type=Path)
@@ -171,6 +181,7 @@ def main(argv: list[str] | None = None) -> int:
 
     config = NEDIEvaluationConfig(
         dataset=args.dataset,
+        scale=args.scale,
         window_size=args.window_size,
         edge_threshold=args.edge_threshold,
         warmup_runs=args.warmup_runs,
@@ -181,7 +192,7 @@ def main(argv: list[str] | None = None) -> int:
         lr_directory = args.lr_dir
     else:
         hr_directory = dataset_hr_directory(args.dataset, args.data_root)
-        lr_directory = dataset_lr_directory(args.dataset, 2, args.data_root)
+        lr_directory = dataset_lr_directory(args.dataset, args.scale, args.data_root)
 
     records = evaluate_nedi_dataset(
         hr_directory,
@@ -191,7 +202,7 @@ def main(argv: list[str] | None = None) -> int:
         max_images=args.max_images,
     )
     output_path = write_results_csv(records, args.output_csv, overwrite=args.overwrite)
-    print(f"Evaluated {len(records)} images from {config.dataset} with NEDI x2.")
+    print(f"Evaluated {len(records)} images from {config.dataset} with NEDI x{config.scale}.")
     print(f"Results saved to {output_path}")
     return 0
 
