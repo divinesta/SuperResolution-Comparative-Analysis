@@ -1,0 +1,7 @@
+method,scale,parameter_count,weighted_peak_gpu_memory_mean_mb,peak_gpu_memory_max_mb,timing_device,device_name
+fsrcnn,x2,12809,72.86495567565639,203.9169921875,gpu,NVIDIA Tesla T4
+fsrcnn,x3,12809,33.491989066067354,95.2578125,gpu,NVIDIA Tesla T4
+fsrcnn,x4,12809,19.59461508276256,54.2568359375,gpu,NVIDIA Tesla T4
+imdn,x2,694404,386.84784576555364,1070.2509765625,gpu,NVIDIA Tesla T4
+imdn,x3,703059,210.86228016195776,484.55126953125,gpu,NVIDIA Tesla T4
+imdn,x4,715176,105.2878897331621,393.18408203125,gpu,NVIDIA Tesla T4

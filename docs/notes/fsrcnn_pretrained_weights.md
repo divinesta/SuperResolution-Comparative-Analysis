@@ -21,4 +21,3 @@ The methodology and final report must state clearly that:
 - FSRCNN used pretrained weights rather than weights trained within this project.
 - The pretrained weights came from the 91-image training dataset.
 - The reported FSRCNN results were produced using those same verified weights.
-

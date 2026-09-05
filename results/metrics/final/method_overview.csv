@@ -1,0 +1,5 @@
+method,evaluated_image_scale_pairs,weighted_psnr_y,weighted_ssim_y,psnr_y_group_wins,ssim_y_group_wins,timing_device,timing_context
+imdn,657,29.377158219009083,0.8356832925345871,12,12,gpu,GPU; NVIDIA Tesla T4
+fsrcnn,657,28.048463496045574,0.8026493078424645,0,0,gpu,GPU; NVIDIA Tesla T4
+bicubic,657,26.42513567339522,0.7524320727879186,0,0,cpu,CPU; Google Colab default CPU (exact model not recorded)
+nedi,657,26.157266618394633,0.7382065099832796,0,0,cpu,CPU; AWS m7i.2xlarge
