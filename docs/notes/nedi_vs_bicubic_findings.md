@@ -60,7 +60,10 @@ Our average deficit is about **−0.5 dB**. Theirs is **−0.46 dB**. We reprodu
 
 The paper's authors were surprised too. They write that this "may appear surprising", and stress that the comparison was done carefully using the original author's code. Their explanation: NEDI removes staircase-looking jagged edges, which *looks* better, but it introduces its own artifacts — directional streaks and a smeared "oil painting" look in textured areas. Those artifacts cost more error than the improved edges save.
 
-**Key idea to hold on to: NEDI trades measured error (PSNR) for visual edge quality. The papers that praise NEDI are mostly praising how it looks, not what it scores.**
+**Key idea to hold on to: NEDI may improve visual edge continuity on some
+images even when its average PSNR is lower. However, this project did not find
+a consistent visual or numerical advantage for NEDI under bicubic
+downsampling.**
 
 ---
 

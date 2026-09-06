@@ -39,3 +39,22 @@ plot. The endpoints are included: IMDN weight 0 is NEDI alone, and IMDN weight
 
 If no mixture beats IMDN alone, the selected weight may be 1.0. That result
 must be reported honestly rather than claiming that fusion improved quality.
+
+## Edge-aware follow-up
+
+The global weighted validation selected 100% IMDN: all 15 validation cases had
+their best PSNR-Y at IMDN weight 1.0. Therefore, one final simple edge-aware
+experiment is permitted before closing Phase 5.
+
+- Edge guide: Sobel gradient strength calculated from bicubic-upsampled LR
+  luminance. The HR reference is never used to locate edges.
+- Edge cut-offs: 80th, 90th, and 95th percentiles.
+- NEDI contribution at detected edges: 5%, 10%, 20%, and 30%.
+- NEDI contribution outside detected edges: 0%.
+- Detected edge mask expansion: one pixel.
+- Validation images, scales, crop rule, metrics, and selection rule remain the
+  same as the global weighted experiment.
+- IMDN alone is included as a candidate and must be beaten on mean PSNR-Y.
+
+This is the final fusion variation. If it does not beat IMDN on validation, no
+further fusion variants will be tried; the negative result will be reported.
