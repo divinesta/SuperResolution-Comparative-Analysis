@@ -193,8 +193,10 @@ The transparent weighted-fusion implementation and its tests are complete.
 Global weight validation selected 100% IMDN, showing that whole-image blending
 did not help. One final edge-aware validation is fixed in
 `docs/notes/phase5_fusion_protocol.md` and implemented by
-`notebooks/15_phase5_edge_aware_fusion_validation_colab.ipynb`. Final benchmark
-evaluation will begin only if that validation selects a real mixture.
+`notebooks/15_phase5_edge_aware_fusion_validation_colab.ipynb`; it also did not
+beat IMDN. The final back-projection check is implemented by
+`notebooks/16_phase5_back_projection_fusion_validation_colab.ipynb`. Final
+benchmark evaluation will begin only if that validation improves on IMDN.
 
 **Tasks:**
 

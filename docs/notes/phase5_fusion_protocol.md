@@ -56,5 +56,18 @@ experiment is permitted before closing Phase 5.
   same as the global weighted experiment.
 - IMDN alone is included as a candidate and must be beaten on mean PSNR-Y.
 
-This is the final fusion variation. If it does not beat IMDN on validation, no
-further fusion variants will be tried; the negative result will be reported.
+The edge-aware variation did not beat IMDN on validation. A final
+back-projection fusion was then approved for evaluation.
+
+## Back-projection follow-up
+
+For each input image, the NEDI and IMDN reconstructions are bicubically
+downsampled to the original LR size. One IMDN weight is calculated by least
+squares so that the combined downsampled result matches the observed LR image
+as closely as possible. The weight is clipped to the valid range from 0 to 1.
+The HR reference is not used to calculate the weight.
+
+This method has no manually selected fusion percentage and uses the same 15
+fixed DIV2K validation cases. It succeeds only if its mean PSNR-Y exceeds IMDN
+alone. This is the final fusion variation; if it does not beat IMDN, the three
+negative fusion results will be reported without further tuning.
