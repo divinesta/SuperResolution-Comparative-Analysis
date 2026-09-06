@@ -331,3 +331,76 @@ def generate_phase4_figures(
     plt.close(figure)
     paths.append(efficiency_path)
     return paths
+
+
+def load_model_complexity(path: str | Path) -> list[dict[str, Any]]:
+    """Load the controlled 256x256 FLOPs/MACs results for both neural models."""
+    source = Path(path)
+    records = read_results_csv(source)
+    expected = {(method, scale) for method in ("fsrcnn", "imdn") for scale in SCALES}
+    actual: set[tuple[str, str]] = set()
+    validated: list[dict[str, Any]] = []
+    for row in records:
+        key = (row.get("method", "").lower(), row.get("scale", ""))
+        if key in actual:
+            raise ValueError(f"{source} contains duplicate complexity group {key}.")
+        actual.add(key)
+        if row.get("flop_convention") != "2_flops_per_multiply_accumulate":
+            raise ValueError(f"{source} does not use the required FLOPs convention.")
+        if int(row.get("lr_width", 0)) != 256 or int(row.get("lr_height", 0)) != 256:
+            raise ValueError(f"{source} was not profiled with a 256x256 LR input.")
+        record = dict(row)
+        for field in ("macs", "flops", "parameter_count"):
+            record[field] = int(row[field])
+        for field in ("gmacs", "gflops"):
+            record[field] = _as_finite_float(row, field, source)
+        if record["flops"] != 2 * record["macs"]:
+            raise ValueError(f"{source} has inconsistent MACs and FLOPs values.")
+        validated.append(record)
+    if actual != expected:
+        raise ValueError(f"{source} does not contain all six model-scale complexity rows.")
+    method_order = {"fsrcnn": 0, "imdn": 1}
+    scale_order = {scale: index for index, scale in enumerate(SCALES)}
+    validated.sort(key=lambda row: (method_order[row["method"]], scale_order[row["scale"]]))
+    return validated
+
+
+def generate_model_complexity_figure(
+    records: list[dict[str, Any]], output_path: str | Path
+) -> Path:
+    """Plot fixed-input FLOPs using the explicitly recorded counting convention."""
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    lookup = {(row["method"], row["scale"]): row for row in records}
+    positions = np.arange(len(SCALES))
+    width = 0.34
+    figure, axis = plt.subplots(figsize=(9, 5.5))
+    for index, (method, colour) in enumerate((("fsrcnn", "#2d72b8"), ("imdn", "#2f855a"))):
+        values = [float(lookup[(method, scale)]["gflops"]) for scale in SCALES]
+        bars = axis.bar(
+            positions + (index - 0.5) * width,
+            values,
+            width,
+            label=method.upper(),
+            color=colour,
+        )
+        axis.bar_label(bars, fmt="%.2f", padding=3, fontsize=9)
+    axis.set_xticks(positions, SCALES)
+    axis.set_ylabel("GFLOPs per 256x256 LR image (lower is lighter)")
+    axis.set_title("Controlled deep-learning operation count")
+    axis.legend(frameon=False)
+    axis.grid(axis="y", alpha=0.25)
+    figure.text(
+        0.5,
+        0.01,
+        "Convention: one multiply-accumulate = two floating-point operations",
+        ha="center",
+        fontsize=9,
+    )
+    figure.tight_layout(rect=(0, 0.04, 1, 1))
+    target = Path(output_path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    figure.savefig(target, dpi=180, bbox_inches="tight")
+    plt.close(figure)
+    return target

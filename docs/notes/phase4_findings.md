@@ -36,9 +36,16 @@ recorded. NEDI was timed on an AWS m7i.2xlarge CPU instance. FSRCNN and IMDN
 were timed on an NVIDIA Tesla T4 GPU. These values describe the completed
 experiments but must not be presented as a direct same-hardware speed ranking.
 
-## Remaining Phase 4 work
+## Completion
 
-- Add side-by-side reconstructed-image comparisons for representative smooth,
-  edge-heavy, textured, and repetitive scenes.
-- Record FLOPs for FSRCNN and IMDN as required by the project plan.
-- Locate or export the final detailed Bicubic per-image CSV if it is available.
+FLOPs and the fixed visual comparison are now complete. The detailed values are
+stored in `results/metrics/final/model_complexity_fixed_256.csv` and
+`results/metrics/final/visual_sample_metrics.csv`. The final full-image and
+identical-crop figures are stored under `results/figures/visual_comparisons/`,
+and their interpretation is documented in
+`docs/notes/phase4_visual_findings.md`.
+
+The final per-image Bicubic CSV is not available in the repository. Its complete
+12-group final summary remains the source used for Phase 4. This limitation is
+recorded rather than silently replacing it with preliminary results generated
+under an older schema.

@@ -1,0 +1,7 @@
+method,scale,batch_size,lr_width,lr_height,input_channels,macs,flops,gmacs,gflops,parameter_count,flop_convention,profiler,device_used_for_profiling
+fsrcnn,x2,1,256,256,1,1719926784,3439853568,1.719926784,3.439853568,12809,2_flops_per_multiply_accumulate,thop,Tesla T4
+fsrcnn,x3,1,256,256,1,3206283264,6412566528,3.206283264,6.412566528,12809,2_flops_per_multiply_accumulate,thop,Tesla T4
+fsrcnn,x4,1,256,256,1,5287182336,10574364672,5.287182336,10.574364672,12809,2_flops_per_multiply_accumulate,thop,Tesla T4
+imdn,x2,1,256,256,3,45185240448,90370480896,45.185240448,90.370480896,694404,2_flops_per_multiply_accumulate,thop,Tesla T4
+imdn,x3,1,256,256,3,45751471488,91502942976,45.751471488,91.502942976,703059,2_flops_per_multiply_accumulate,thop,Tesla T4
+imdn,x4,1,256,256,3,46544194944,93088389888,46.544194944,93.088389888,715176,2_flops_per_multiply_accumulate,thop,Tesla T4

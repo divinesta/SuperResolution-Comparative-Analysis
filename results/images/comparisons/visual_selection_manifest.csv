@@ -1,0 +1,13 @@
+dataset,image,scale,selection_reason,hr_width,hr_height,lr_width,lr_height,output_directory
+Set5,baby.png,x2,smooth face and gradual colour regions,512,512,256,256,visual_samples/Set5/baby/x2
+Set5,butterfly.png,x2,fine lines and high-frequency texture,256,256,128,128,visual_samples/Set5/butterfly/x2
+Set14,baboon.png,x2,difficult natural texture,500,480,250,240,visual_samples/Set14/baboon/x2
+Urban100,img_004.png,x2,architectural edges and repetitive structure,1024,680,512,340,visual_samples/Urban100/img_004/x2
+Set5,baby.png,x3,smooth face and gradual colour regions,512,512,170,170,visual_samples/Set5/baby/x3
+Set5,butterfly.png,x3,fine lines and high-frequency texture,256,256,85,85,visual_samples/Set5/butterfly/x3
+Set14,baboon.png,x3,difficult natural texture,500,480,166,160,visual_samples/Set14/baboon/x3
+Urban100,img_004.png,x3,architectural edges and repetitive structure,1024,680,341,226,visual_samples/Urban100/img_004/x3
+Set5,baby.png,x4,smooth face and gradual colour regions,512,512,128,128,visual_samples/Set5/baby/x4
+Set5,butterfly.png,x4,fine lines and high-frequency texture,256,256,64,64,visual_samples/Set5/butterfly/x4
+Set14,baboon.png,x4,difficult natural texture,500,480,125,120,visual_samples/Set14/baboon/x4
+Urban100,img_004.png,x4,architectural edges and repetitive structure,1024,680,256,170,visual_samples/Urban100/img_004/x4
