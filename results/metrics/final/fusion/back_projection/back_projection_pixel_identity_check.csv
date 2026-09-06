@@ -1,0 +1,16 @@
+validation_dataset,image,scale,imdn_weight,nedi_weight,pixel_identical_to_imdn,max_abs_pixel_difference_vs_imdn,different_pixel_count,different_channel_value_count
+DIV2K_valid,0801.png,x2,0.9966077001635446,0.0033922998364553925,True,0,0,0
+DIV2K_valid,0802.png,x2,1.0,0.0,True,0,0,0
+DIV2K_valid,0803.png,x2,0.9976565304901267,0.002343469509873297,True,0,0,0
+DIV2K_valid,0804.png,x2,1.0,0.0,True,0,0,0
+DIV2K_valid,0805.png,x2,1.0,0.0,True,0,0,0
+DIV2K_valid,0801.png,x3,1.0,0.0,True,0,0,0
+DIV2K_valid,0802.png,x3,1.0,0.0,True,0,0,0
+DIV2K_valid,0803.png,x3,1.0,0.0,True,0,0,0
+DIV2K_valid,0804.png,x3,1.0,0.0,True,0,0,0
+DIV2K_valid,0805.png,x3,1.0,0.0,True,0,0,0
+DIV2K_valid,0801.png,x4,1.0,0.0,True,0,0,0
+DIV2K_valid,0802.png,x4,1.0,0.0,True,0,0,0
+DIV2K_valid,0803.png,x4,1.0,0.0,True,0,0,0
+DIV2K_valid,0804.png,x4,1.0,0.0,True,0,0,0
+DIV2K_valid,0805.png,x4,1.0,0.0,True,0,0,0
