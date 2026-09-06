@@ -1,0 +1,33 @@
+{
+  "method": "back_projection_nedi_imdn_fusion",
+  "weight_calculation": "per_image_least_squares_match_to_original_lr_clipped_0_to_1",
+  "uses_hr_to_choose_weight": false,
+  "improved_over_imdn": false,
+  "scale": "overall",
+  "sample_count": 15,
+  "mean_imdn_weight": 0.9996176153769114,
+  "mean_nedi_weight": 0.0003823846230885793,
+  "minimum_imdn_weight": 0.9966077001635446,
+  "maximum_imdn_weight": 1.0,
+  "mean_fusion_psnr_y": 36.704080110759186,
+  "mean_imdn_psnr_y": 36.704080110759186,
+  "mean_psnr_y_change_vs_imdn": 0.0,
+  "mean_fusion_ssim_y": 0.9174391661753033,
+  "mean_imdn_ssim_y": 0.9174391661753033,
+  "mean_ssim_y_change_vs_imdn": 0.0,
+  "fusion_psnr_y_win_count": 0,
+  "validation_dataset": "DIV2K_valid",
+  "validation_image_ids": [
+    "0801",
+    "0802",
+    "0803",
+    "0804",
+    "0805"
+  ],
+  "validation_scales": [
+    2,
+    3,
+    4
+  ],
+  "generated_at_utc": "2026-09-06T20:24:22.193186+00:00"
+}

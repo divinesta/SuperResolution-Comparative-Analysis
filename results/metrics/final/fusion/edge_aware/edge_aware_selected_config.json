@@ -1,0 +1,42 @@
+{
+  "method": "edge_aware_nedi_imdn_fusion",
+  "selected_config_id": "imdn_only",
+  "improved_over_imdn": false,
+  "selected_edge_percentile": "not_applicable",
+  "selected_nedi_weight_at_edges": 0.0,
+  "selected_imdn_weight_at_edges": 1.0,
+  "selected_mean_edge_pixel_fraction": 0.0,
+  "selected_mean_psnr_y": 36.704080110759186,
+  "selected_mean_ssim_y": 0.9174391661753033,
+  "imdn_only_mean_psnr_y": 36.704080110759186,
+  "imdn_only_mean_ssim_y": 0.9174391661753033,
+  "psnr_y_change_vs_imdn": 0.0,
+  "ssim_y_change_vs_imdn": 0.0,
+  "selection_rule": "highest_mean_psnr_y_then_mean_ssim_y_then_less_nedi",
+  "validation_dataset": "DIV2K_valid",
+  "validation_image_ids": [
+    "0801",
+    "0802",
+    "0803",
+    "0804",
+    "0805"
+  ],
+  "validation_scales": [
+    2,
+    3,
+    4
+  ],
+  "edge_percentile_candidates": [
+    80.0,
+    90.0,
+    95.0
+  ],
+  "edge_nedi_weight_candidates": [
+    0.05,
+    0.1,
+    0.2,
+    0.3
+  ],
+  "dilation_radius": 1,
+  "generated_at_utc": "2026-09-06T20:04:51.248513+00:00"
+}
