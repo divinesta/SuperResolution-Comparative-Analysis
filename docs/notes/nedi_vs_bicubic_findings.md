@@ -18,7 +18,7 @@ After the x2 run finished, NEDI scored *below* bicubic on three of the four data
 NEDI x2 against the bicubic baseline, PSNR-Y (higher is better):
 
 | Dataset | Bicubic | NEDI | Difference |
-|---|---:|---:|---:|
+| --- | ---: | ---: | ---: |
 | Set5 | 33.673 | 33.156 | **−0.517 dB** |
 | Set14 | 30.346 | 29.875 | **−0.471 dB** |
 | BSD100 | 29.598 | 29.046 | **−0.553 dB** |
@@ -35,7 +35,7 @@ Urban100 is the only dataset where NEDI wins. Urban100 is full of buildings, win
 Yes. The bicubic baseline reproduces published numbers almost exactly:
 
 | Dataset x2 | Our bicubic | Published bicubic |
-|---|---:|---:|
+| --- | ---: | ---: |
 | Set5 | 33.673 | 33.66 |
 | Set14 | 30.346 | 30.24 |
 | BSD100 | 29.598 | 29.56 |
@@ -50,7 +50,7 @@ If the PSNR calculation, the colour conversion, the border cropping or the image
 This is documented in a peer-reviewed paper. Asuni & Giachetti, *Accuracy Improvements and Artifacts Removal in Edge Based Image Interpolation* (VISAPP 2008 — the paper that introduced "iNEDI") tested **Xin Li's own original NEDI code** against MATLAB bicubic on 9 natural images:
 
 | | NEDI | Bicubic | Difference |
-|---|---:|---:|---:|
+| --- | ---: | ---: | ---: |
 | x2 average | 32.76 | 33.22 | **−0.46 dB** |
 | x4 average | 25.99 | 26.33 | −0.34 dB |
 
@@ -82,7 +82,7 @@ Two consequences:
 **I proved this is the cause.** Running our unmodified `nedi_upsample_x2_luminance` on images made by decimation instead:
 
 | Image | Bicubic | NEDI | Difference |
-|---|---:|---:|---:|
+| --- | ---: | ---: | ---: |
 | astronaut | 30.037 | 30.533 | **+0.496 dB** |
 | camera | 28.995 | 29.408 | **+0.412 dB** |
 | chelsea | 33.280 | 33.499 | **+0.219 dB** |
