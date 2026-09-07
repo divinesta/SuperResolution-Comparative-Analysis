@@ -60,3 +60,15 @@ Google Colab:
 python -m app.demo --share
 ```
 
+## Large Upload Handling
+
+The demo keeps the whole uploaded image. It does not crop large uploads.
+
+If the LR input is larger than 512 pixels on its longest side, the app
+automatically resizes it to fit within 512 pixels before running the methods.
+For example, a 1920x1440 LR image becomes 512x384.
+
+This keeps NEDI practical because NEDI runs on CPU and becomes slow on large
+images. When automatic resizing happens, live PSNR/SSIM are disabled because
+the uploaded HR reference no longer corresponds exactly to the resized LR
+pipeline.

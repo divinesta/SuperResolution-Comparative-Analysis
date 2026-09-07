@@ -1,0 +1,12 @@
+{
+  "model": "fsrcnn",
+  "scale": 3,
+  "source_url": "https://dl.dropboxusercontent.com/s/pm1ed2nyboulz5z/fsrcnn_x3.pth",
+  "original_filename": "fsrcnn_x3.pth",
+  "sha256": "f65b55819c1258048bc8c1ca96f9e24bd4339f779951d7f928144c08e3868d75",
+  "size_bytes": 54998,
+  "architecture": "FSRCNN luminance, d=56, s=12, m=4",
+  "training_dataset": "91-image",
+  "degradation": "bicubic",
+  "source_repository": "https://github.com/yjn870/FSRCNN-pytorch"
+}

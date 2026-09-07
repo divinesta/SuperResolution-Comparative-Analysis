@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import tempfile
 import time
+import warnings
 import zipfile
 from argparse import ArgumentParser
 from dataclasses import dataclass
@@ -44,6 +45,13 @@ class MethodOutput:
     notes: str
 
 
+@dataclass(frozen=True)
+class PreparedInput:
+    image: Image.Image
+    original_size: tuple[int, int]
+    resized: bool
+
+
 def _device() -> torch.device:
     return torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -82,12 +90,37 @@ def _target_size(lr_image: Image.Image, scale: int) -> tuple[int, int]:
     return (lr_image.width * scale, lr_image.height * scale)
 
 
-def _guard_input_size(lr_image: Image.Image) -> None:
+def _resize_for_demo(lr_image: Image.Image) -> PreparedInput:
     largest_side = max(lr_image.size)
-    if largest_side > MAX_LR_SIDE:
-        raise gr.Error(
-            f"Input is {lr_image.width}x{lr_image.height}px. Max side supported is {MAX_LR_SIDE}px."
+    if largest_side <= MAX_LR_SIDE:
+        return PreparedInput(
+            image=lr_image,
+            original_size=lr_image.size,
+            resized=False,
         )
+
+    ratio = MAX_LR_SIDE / largest_side
+    resized_size = (
+        max(1, round(lr_image.width * ratio)),
+        max(1, round(lr_image.height * ratio)),
+    )
+    resized = lr_image.resize(resized_size, Image.Resampling.BICUBIC)
+    return PreparedInput(
+        image=resized,
+        original_size=lr_image.size,
+        resized=True,
+    )
+
+
+def _resize_note(prepared: PreparedInput) -> str | None:
+    if not prepared.resized:
+        return None
+    old_width, old_height = prepared.original_size
+    new_width, new_height = prepared.image.size
+    return (
+        f"Input resized from {old_width}x{old_height}px to "
+        f"{new_width}x{new_height}px for demo speed."
+    )
 
 
 def _time_call(function: Any, *args: Any) -> MethodOutput:
@@ -210,9 +243,13 @@ def run_super_resolution(
     if scale not in SCALES:
         raise gr.Error(f"Scale must be one of {SCALES}.")
 
-    lr_image = _clean_image(lr_image)
-    _guard_input_size(lr_image)
-    reference = _clean_image(reference_hr) if reference_hr is not None else None
+    prepared = _resize_for_demo(_clean_image(lr_image))
+    lr_image = prepared.image
+    reference = (
+        _clean_image(reference_hr)
+        if reference_hr is not None and not prepared.resized
+        else None
+    )
     device = _device()
 
     bicubic = _time_call(_run_bicubic, lr_image, scale)
@@ -250,6 +287,16 @@ def run_super_resolution(
         "fusion": fusion.image,
     }
     slider = (bicubic.image, imdn.image)
+
+    resize_note = _resize_note(prepared)
+    if resize_note is not None:
+        df.loc[len(df)] = {
+            "Method": "DEMO",
+            "PSNR-Y": "—",
+            "SSIM-Y": "—",
+            "Latency": "—",
+            "Notes": f"{resize_note} PSNR/SSIM disabled because the LR input was resized.",
+        }
 
     return (
         slider,
@@ -479,9 +526,27 @@ def build_theme() -> gr.Theme:
 
 
 def build_interface() -> gr.Blocks:
+    theme = build_theme()
     dot_class = "device-dot" if _is_cuda() else "device-dot-cpu"
 
-    with gr.Blocks(title="Super-Resolution Demo") as demo:
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "ignore",
+            message="The 'theme' parameter in the Blocks constructor will be removed.*",
+            category=DeprecationWarning,
+        )
+        warnings.filterwarnings(
+            "ignore",
+            message="The 'css' parameter in the Blocks constructor will be removed.*",
+            category=DeprecationWarning,
+        )
+        demo_context = gr.Blocks(
+            theme=theme,
+            css=EMIL_CSS,
+            title="Super-Resolution Demo",
+        )
+
+    with demo_context as demo:
         stored_images = gr.State({})
 
         # Header
@@ -608,13 +673,10 @@ def main() -> None:
     parser.add_argument("--server-name", default=None)
     parser.add_argument("--server-port", type=int, default=None)
     args = parser.parse_args()
-    theme = build_theme()
     build_interface().launch(
         share=args.share,
         server_name=args.server_name,
         server_port=args.server_port,
-        theme=theme,
-        css=EMIL_CSS,
     )
 
 

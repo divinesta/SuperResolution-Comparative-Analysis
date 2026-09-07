@@ -1,0 +1,12 @@
+{
+  "model": "imdn",
+  "scale": 4,
+  "source_url": "https://raw.githubusercontent.com/Zheng222/IMDN/master/checkpoints/IMDN_x4.pth",
+  "original_filename": "IMDN_x4.pth",
+  "sha256": "e660c38221147217a136debeb99eb304d62d9c0f73ac421ed66281b619719714",
+  "size_bytes": 2879112,
+  "architecture": "IMDN RGB, 64 features, 6 IMD modules",
+  "training_dataset": "DIV2K",
+  "degradation": "bicubic",
+  "source_repository": "https://github.com/Zheng222/IMDN"
+}
