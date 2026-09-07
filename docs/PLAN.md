@@ -214,17 +214,21 @@ the validation stage rejected the fusion variants before final test-set use.
 
 ### Phase 6: Explainable Artificial Intelligence
 
+**Status:** Completed on 7 September 2026.
+
 **Tasks:**
 
-- Select representative images from different test-set characteristics.
-- Apply LIME and SHAP to the best-performing deep learning model.
-- Generate explanation maps for edges, textures, smooth regions, and artefact-prone areas.
-- Record the explanation settings and computational cost.
-- Interpret whether the model relies on meaningful structural information or suspicious patterns.
+- Selected representative images from different test-set characteristics.
+- Applied LIME and SHAP to IMDN, the best-performing deep learning model.
+- Generated explanation maps for smooth regions, texture, and repetitive architectural structure.
+- Recorded the explanation settings, target regions, sample counts, and runtime.
+- Interpreted the maps as evidence that IMDN relies mainly on nearby structural LR information.
 
 **Deliverable:** LIME and SHAP visualisations with written interpretation.
 
-**Completion test:** Explanations are reproducible, readable, and connected to specific super-resolution behaviours.
+**Completion test:** Completed. Final outputs are stored in `results/metrics/final/xai/`
+and `results/figures/xai/`, with written findings in
+`docs/notes/phase6_xai_findings.md`.
 
 ### Phase 7: Gradio Demo
 

@@ -1,0 +1,41 @@
+{
+  "phase": 6,
+  "run_name": "imdn_xai_final_v1",
+  "model": "IMDN",
+  "purpose": "Final LIME and SHAP explanation maps for selected IMDN super-resolution cases.",
+  "target_metric": "PSNR-Y on centred HR target region",
+  "cases": [
+    {
+      "dataset": "Set5",
+      "image": "baby.png",
+      "scale": 2,
+      "region_type": "smooth face and gradual colour regions"
+    },
+    {
+      "dataset": "Set5",
+      "image": "butterfly.png",
+      "scale": 3,
+      "region_type": "fine lines and high-frequency texture"
+    },
+    {
+      "dataset": "Set14",
+      "image": "baboon.png",
+      "scale": 4,
+      "region_type": "difficult natural texture"
+    },
+    {
+      "dataset": "Urban100",
+      "image": "img_004.png",
+      "scale": 3,
+      "region_type": "architectural edges and repetitive structure"
+    }
+  ],
+  "grid_rows": 8,
+  "grid_columns": 8,
+  "lime_samples": 96,
+  "shap_samples": 96,
+  "target_hr_size": 96,
+  "random_seed": 42,
+  "perturbation": "replace hidden LR segments with Gaussian-blurred LR pixels, radius 3",
+  "generated_at_utc": "2026-09-07T12:36:53.862452+00:00"
+}
