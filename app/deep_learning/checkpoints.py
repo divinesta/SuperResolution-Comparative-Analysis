@@ -6,7 +6,7 @@ import hashlib
 import json
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from urllib.request import urlopen
+from urllib.request import Request, urlopen
 
 from app.deep_learning.config import DeepLearningModelConfig
 
@@ -143,7 +143,11 @@ def download_official_imdn_checkpoint(
     try:
         digest = hashlib.sha256()
         downloaded_size = 0
-        with urlopen(provenance.source_url, timeout=60) as response:
+        request = Request(
+            provenance.source_url,
+            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"},
+        )
+        with urlopen(request, timeout=60) as response:
             with temporary.open("wb") as output:
                 while block := response.read(1024 * 1024):
                     output.write(block)
@@ -193,7 +197,11 @@ def download_pretrained_fsrcnn_checkpoint(
     try:
         digest = hashlib.sha256()
         downloaded_size = 0
-        with urlopen(provenance.source_url, timeout=60) as response:
+        request = Request(
+            provenance.source_url,
+            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"},
+        )
+        with urlopen(request, timeout=60) as response:
             with temporary.open("wb") as output:
                 while block := response.read(1024 * 1024):
                     output.write(block)

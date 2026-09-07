@@ -232,18 +232,23 @@ and `results/figures/xai/`, with written findings in
 
 ### Phase 7: Gradio Demo
 
+**Status:** Completed on 7 September 2026.
+
 **Tasks:**
 
-- Build an image-upload workflow in Gradio.
-- Display bicubic, NEDI, FSRCNN, IMDN, and fusion outputs side by side.
-- Display available PSNR, SSIM, runtime, and model information.
-- Add selected XAI maps for the best deep learning model.
-- Add output download support.
-- Test the interface on CPU and document its limitations.
+- Built a publication-grade multi-tab interface in Gradio 5.
+- Implemented an interactive before/after split slider (`gr.ImageSlider`) with selectable method comparison pairs.
+- Display Bicubic, NEDI, FSRCNN, IMDN, and Back-Projection fusion side by side in a dedicated multi-model gallery.
+- Added live Y-channel PSNR (dB) and SSIM metric calculation with scale-border cropping when an optional HR reference is supplied.
+- Provided built-in sample test presets for instant one-click demonstration.
+- Built a Research Benchmark tab featuring summary cards, performance overview tables, VRAM efficiency metrics, GFLOPs complexity, and interactive publication charts.
+- Built an Explainable AI (XAI) tab featuring side-by-side LIME and SHAP heatmaps, perturbation drop metrics, and scientific takeaways across all four benchmark cases.
+- Included an Academic Methodology & Evaluation Protocol tab detailing problem formulation, color space standards, and the NEDI phase alignment audit.
+- Supported ZIP archive downloads for all reconstructed outputs.
 
-**Deliverable:** Demonstration-ready Gradio application.
+**Deliverable:** Publication-grade demonstration Gradio application (`app/demo.py`).
 
-**Completion test:** A user can upload an image, select a scaling factor, view the method outputs, and download results.
+**Completion test:** Completed. A user can upload any image or choose built-in presets, select scaling factors, interactively inspect outputs with the split slider or multi-model gallery, view live metrics, and explore benchmark and XAI findings.
 
 ### Phase 8: Final Analysis and Report
 
