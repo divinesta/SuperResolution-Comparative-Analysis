@@ -2,16 +2,28 @@
 
 **Updated:** 7 September 2026  
 **App entry point:** `app/demo.py`  
+**Demo package:** `demo/`  
 **Colab launcher:** `notebooks/19_phase7_gradio_demo_colab.ipynb`
 
 ## Purpose & Architecture
 
 Phase 7 provides a publication-grade interactive demonstration and research showcase of the final project. The interface is organized into four specialized tabs:
 
+The runnable command remains `python -m app.demo`, but the implementation is
+split into the `demo/` package:
+
+- `demo/interface.py`: Gradio layout and event wiring.
+- `demo/inference.py`: Bicubic, NEDI, FSRCNN, IMDN, fusion, metrics, and ZIP export callbacks.
+- `demo/runtime.py`: GPU/CPU detection and pretrained checkpoint loading.
+- `demo/settings.py`: shared constants, paths, scale options, and XAI case mapping.
+- `demo/styles.py`: Gradio theme and custom CSS.
+- `demo/xai.py`: XAI figure lookup helpers.
+
 1. **Interactive Studio (`studio_tab`):**
-   - Upload any custom LR image or choose from built-in sample presets (`demo/examples/`).
+   - Upload either one HR image for experiment-style simulation or a prepared LR image for direct upscaling.
    - Select scaling factors: x2, x3, or x4.
-   - Optional Ground Truth (HR) reference upload for live Y-PSNR (dB) and Y-SSIM evaluation with scale-dependent border cropping.
+   - In experiment-style mode, the app creates the LR image internally through bicubic downsampling, then evaluates reconstructions against the aligned HR reference.
+   - In direct LR mode, an optional matching HR reference can be uploaded for live Y-PSNR (dB) and Y-SSIM evaluation with scale-dependent border cropping.
    - **Interactive Before/After Split Slider (`gr.ImageSlider`):** Live draggable split slider comparing Bicubic vs IMDN, LR vs IMDN, NEDI vs IMDN, or FSRCNN vs IMDN.
    - **Multi-Model Gallery:** 5 side-by-side output cards (Bicubic, NEDI, FSRCNN, IMDN, and Back-Projection Fusion).
    - Evaluation metrics table, status notes, and ZIP archive download for all reconstructed PNGs.
@@ -62,13 +74,21 @@ python -m app.demo --share
 
 ## Large Upload Handling
 
-The demo keeps the whole uploaded image. It does not crop large uploads.
+The demo keeps the whole uploaded image's aspect ratio. It does not take a
+small patch/crop from the middle.
 
-If the LR input is larger than 512 pixels on its longest side, the app
+In direct LR mode, if the LR input is larger than 512 pixels on its longest side, the app
 automatically resizes it to fit within 512 pixels before running the methods.
 For example, a 1920x1440 LR image becomes 512x384.
+
+In experiment-style mode, the uploaded image is treated as the HR reference.
+If that HR image would create an LR image larger than 512 pixels on its longest
+side, the HR display reference is resized first. The app then creates the LR
+image from that resized HR reference using bicubic downsampling. This preserves
+the same controlled degradation setup used in the project experiments.
 
 This keeps NEDI practical because NEDI runs on CPU and becomes slow on large
 images. When automatic resizing happens, live PSNR/SSIM are disabled because
 the uploaded HR reference no longer corresponds exactly to the resized LR
-pipeline.
+pipeline in direct LR mode. In experiment-style mode, metrics remain valid
+because the resized HR reference and generated LR image are kept aligned.
