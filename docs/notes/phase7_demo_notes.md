@@ -39,7 +39,9 @@ split into the `demo/` package:
    - Model computational complexity table (`model_complexity_fixed_256.csv`).
    - Interactive publication figure selector (PSNR-Y, SSIM-Y, VRAM, latency, and GFLOPs).
 
-3. **Explainability / XAI Explorer (`xai_tab`):**
+3. **Saved Phase 6 XAI Results (`xai_tab`):**
+   - This section is a viewer for precomputed Phase 6 XAI figures, not a live XAI generator for uploaded demo images.
+   - The interface states this clearly so users do not confuse LIME/SHAP explanations with another upscaling model.
    - Case-by-case browser covering all 4 benchmark evaluations:
      - `Set5 — baby.png (x2)`: Smooth facial skin and gradual contours.
      - `Set5 — butterfly.png (x3)`: High-frequency wing veins and edges.

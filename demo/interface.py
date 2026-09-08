@@ -118,7 +118,11 @@ def build_interface() -> gr.Blocks:
                 imdn_out = gr.Image(label="IMDN", type="pil")
                 fusion_out = gr.Image(label="Fusion", type="pil")
 
-        with gr.Accordion("XAI Feature Attribution (IMDN)", open=False):
+        with gr.Accordion("Saved Phase 6 XAI Results", open=False):
+            gr.Markdown(
+                "These are precomputed LIME and SHAP explanation maps from Phase 6 benchmark cases. "
+                "They are not generated live for the image uploaded above."
+            )
             case_dropdown = gr.Dropdown(
                 choices=list(XAI_MAPS.keys()),
                 value="Set5: baby (x2)",
